@@ -1,23 +1,17 @@
-#### YOU NEED CMAKE < 3.5 !
+# Aetherial Bloodlines
 
-#### WINDOWS ENVIRONMENT VARIABLES TO SET
+SKSE/CommonLibSSE NG plugin for race-based Health/Magicka/Stamina gain on level up.
 
-1. **`COMMONLIB_SSE_FOLDER`**: The path to your clone of Commonlib.
-2. **`VCPKG_ROOT`**: The path to your clone of [vcpkg](https://github.com/microsoft/vcpkg).
-3. (optional) **`SKYRIM_FOLDER`**: path of your Skyrim Special Edition folder.
-4. (optional) **`SKYRIM_MODS_FOLDER`**: path of the folder where your mods are.
+This version uses the clean path:
 
-#### THINGS TO EDIT
+- hook `ConfirmLevelUpAttributeCallback::Run`
+- read the selected `ActorValue`
+- set `iAVDhmsLevelup` to the race INI value
+- call the original vanilla callback
+- restore `iAVDhmsLevelup`
 
-1. CMakeLists.txt
-- **`AUTHORNAME`**
-- **`MDDNAME`**
-- (optional) Your plugin version. Default: `0.1.0.0`
-2. vcpkg.json
-- **`name`**: Your plugin's name.
-- **`version-string`**: Your plugin version. Default: `0.1.0.0`
+No menu-close cache. No after-the-fact add/subtract correction.
 
-#### FEATURES
-Automatically imports:
-- [CLibUtil](https://github.com/powerof3/CLibUtil) by powerof3
-- [SKSE Menu Framework](https://www.nexusmods.com/skyrimspecialedition/mods/120352) by Thiago099
+## INI
+
+`Data/SKSE/Plugins/AetherialBloodlines.ini`

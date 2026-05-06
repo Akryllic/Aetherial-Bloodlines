@@ -1,4 +1,3 @@
-
 if(NOT DEFINED ENV{COMMONLIB_SSE_FOLDER})
   message(FATAL_ERROR "Missing COMMONLIB_SSE_FOLDER environment variable")
 endif()
@@ -12,13 +11,12 @@ add_include_folder(include)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
-# It's recommended to set a minimum CMake version.
-# If you use CMake features from higher versions, update this to match.
 cmake_minimum_required(VERSION 3.21)
-# Set your project name. This will be the name of your SKSE .dll file.
-set(AUTHOR_NAME "AUTHORNAME")
-set(PRODUCT_NAME "ModName")
+
+set(AUTHOR_NAME "Ivy")
+set(PRODUCT_NAME "AetherialBloodlines")
 project(${PRODUCT_NAME} VERSION 0.1.0.0 LANGUAGES CXX)
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
@@ -37,7 +35,6 @@ add_custom_command(
     DEPENDS ${RESOURCE_FILE}
 )
 
-# Add a custom target to ensure the resource file is generated
 add_custom_target(Resource ALL DEPENDS ${RESOURCE_OUTPUT})
 
 set(ENABLE_SKYRIM_SE ON CACHE BOOL " " FORCE)
@@ -47,11 +44,6 @@ set(BUILD_TESTS OFF CACHE BOOL " " FORCE)
 
 add_subdirectory("$ENV{COMMONLIB_SSE_FOLDER}" ${CMAKE_CURRENT_BINARY_DIR}/_deps/clib-build)
 get_target_property(COMMONLIB_SRC_DIR CommonLibSSE SOURCE_DIR)
-
-find_path(CLIB_UTIL_INCLUDE_DIRS "ClibUtil/utils.hpp")
-find_path(CLIB_UTILS_QTR_INCLUDE_DIRS "ClibUtilsQTR/utils.hpp")
-find_path(SKSE_MCP_INCLUDE_DIRS "SKSEMCP/utils.hpp")
-
 
 file(
   GLOB_RECURSE
@@ -65,7 +57,6 @@ source_group(
   FILES ${headers} ${sources}
 )
 
-set(BUILD_TESTS OFF)
 include(${COMMONLIB_SRC_DIR}/cmake/CommonLibSSE.cmake)
 
 add_commonlibsse_plugin(
@@ -73,15 +64,13 @@ add_commonlibsse_plugin(
   AUTHOR AUTHOR_NAME
   SOURCES ${headers} ${sources}
 )
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
-target_precompile_headers(${PROJECT_NAME} PRIVATE include/PCH.h) # <--- PCH.h is required!
+
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+target_precompile_headers(${PROJECT_NAME} PRIVATE include/PCH.h)
 target_include_directories(
-	${PROJECT_NAME}
-	PRIVATE
-	${CLIB_UTIL_INCLUDE_DIRS}
-	${CLIB_UTILS_QTR_INCLUDE_DIRS}
-    ${SKSE_MCP_INCLUDE_DIRS}
-	${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${PROJECT_NAME}
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE IS_HOST_PLUGIN)
