@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "Settings.h"
 
 #include <algorithm>
@@ -6,6 +7,7 @@
 #include <fstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace
 {
@@ -128,50 +130,52 @@ namespace Settings
             return;
         }
 
-        std::string currentSection = "Default";
-        g_raceGains[currentSection] = g_defaultGains;
-
+        std::vector<std::string> lines;
         std::string line;
         while (std::getline(file, line)) {
             line = StripComment(std::move(line));
-            if (line.empty()) {
-                continue;
+            if (!line.empty()) {
+                lines.push_back(line);
             }
-
-            if (line.front() == '[' && line.back() == ']') {
-                currentSection = Trim(line.substr(1, line.size() - 2));
-                if (currentSection.empty()) {
-                    currentSection = "Default";
-                }
-
-                if (!g_raceGains.contains(currentSection)) {
-                    g_raceGains[currentSection] = g_defaultGains;
-                }
-                continue;
-            }
-
-            const auto equals = line.find('=');
-            const auto colon = line.find(':');
-
-            auto split = std::string::npos;
-            if (equals != std::string::npos && colon != std::string::npos) {
-                split = std::min(equals, colon);
-            } else if (equals != std::string::npos) {
-                split = equals;
-            } else {
-                split = colon;
-            }
-
-            if (split == std::string::npos) {
-                logger::warn("Invalid INI line ignored: {}", line);
-                continue;
-            }
-
-            ApplyKey(g_raceGains[currentSection], line.substr(0, split), line.substr(split + 1));
         }
 
-        if (const auto it = g_raceGains.find("Default"); it != g_raceGains.end()) {
-            g_defaultGains = it->second;
+        {
+            AttributeGains defaults{};
+            std::string section;
+            for (const auto& l : lines) {
+                if (l.front() == '[' && l.back() == ']') {
+                    section = Trim(l.substr(1, l.size() - 2));
+                    continue;
+                }
+                if (ToLower(section) == "default") {
+                    const auto eq = l.find('=');
+                    if (eq != std::string::npos) {
+                        ApplyKey(defaults, l.substr(0, eq), l.substr(eq + 1));
+                    }
+                }
+            }
+            g_defaultGains = defaults;
+        }
+
+        {
+            std::string section = "default";
+            g_raceGains[section] = g_defaultGains;
+            for (const auto& l : lines) {
+                if (l.front() == '[' && l.back() == ']') {
+                    section = ToLower(Trim(l.substr(1, l.size() - 2)));
+                    if (section.empty()) {
+                        section = "default";
+                    }
+                    if (!g_raceGains.contains(section)) {
+                        g_raceGains[section] = g_defaultGains;
+                    }
+                    continue;
+                }
+                const auto eq = l.find('=');
+                if (eq != std::string::npos) {
+                    ApplyKey(g_raceGains[section], l.substr(0, eq), l.substr(eq + 1));
+                }
+            }
         }
 
         logger::info("Loaded {} race attribute sections from {}", g_raceGains.size(), INI_PATH);
@@ -179,8 +183,8 @@ namespace Settings
 
     AttributeGains GetForRace(RE::TESRace* a_race)
     {
-        const auto editorID = GetRaceEditorID(a_race);
-        if (editorID && editorID[0] != '\0') {
+        const auto editorID = ToLower(std::string(GetRaceEditorID(a_race)));
+        if (!editorID.empty()) {
             if (const auto it = g_raceGains.find(editorID); it != g_raceGains.end()) {
                 return it->second;
             }

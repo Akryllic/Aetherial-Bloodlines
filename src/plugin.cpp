@@ -6,9 +6,8 @@ namespace
 {
     void OnMessage(SKSE::MessagingInterface::Message* a_message)
     {
-        if (!a_message) {
+        if (!a_message) 
             return;
-        }
 
         switch (a_message->type) {
         case SKSE::MessagingInterface::kDataLoaded:

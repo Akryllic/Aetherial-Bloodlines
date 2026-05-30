@@ -1,95 +1,57 @@
+#include "PCH.h"
 #include "LevelUpHook.h"
 #include "Settings.h"
 
 namespace
 {
+    using Callback = RE::LevelUpMenu::ConfirmLevelUpAttributeCallback;
     using Message = RE::IMessageBoxCallback::Message;
+    using RunFn = void(Callback*, Message);
 
-    class ConfirmLevelUpAttributeCallbackLayout : public RE::IMessageBoxCallback
-    {
-    public:
-        ~ConfirmLevelUpAttributeCallbackLayout() override = default;
-        void Run(Message) override {}
+    REL::Relocation<RunFn> g_originalRun;
 
-        RE::LevelUpMenu* menu;
-        RE::ActorValue actorValue;
-    };
-
-    using Run_t = void (*)(ConfirmLevelUpAttributeCallbackLayout*, Message);
-
-    REL::Relocation<Run_t> g_originalRun;
-    bool g_installed = false;
-
-    [[nodiscard]] bool IsHandledAttribute(RE::ActorValue a_actorValue)
-    {
-        switch (a_actorValue) {
-        case RE::ActorValue::kHealth:
-        case RE::ActorValue::kMagicka:
-        case RE::ActorValue::kStamina:
-            return true;
-        default:
-            return false;
-        }
-    }
-
-    [[nodiscard]] const char* ActorValueName(RE::ActorValue a_actorValue)
-    {
-        switch (a_actorValue) {
-        case RE::ActorValue::kHealth:
-            return "Health";
-        case RE::ActorValue::kMagicka:
-            return "Magicka";
-        case RE::ActorValue::kStamina:
-            return "Stamina";
-        default:
-            return "Unknown";
-        }
-    }
-
-    [[nodiscard]] RE::Setting* GetLevelUpGainSetting()
-    {
-        const auto settings = RE::GameSettingCollection::GetSingleton();
-        return settings ? settings->GetSetting("iAVDhmsLevelup") : nullptr;
-    }
-
-    [[nodiscard]] std::int32_t GetRaceGain(RE::ActorValue a_actorValue)
+    std::int32_t GetRaceGain(RE::ActorValue a_av)
     {
         const auto player = RE::PlayerCharacter::GetSingleton();
-        if (!player) {
-            return 10;
-        }
-
-        const auto race = player->GetRace();
-        const auto gains = Settings::GetForRace(race);
-        return gains.Get(a_actorValue);
+        if (!player) return 10;
+        return Settings::GetForRace(player->GetRace()).Get(a_av);
     }
 
-    void RunHook(ConfirmLevelUpAttributeCallbackLayout* a_this, Message a_msg)
+    void RunHook(Callback* a_this, Message a_msg)
     {
-        if (!a_this || !IsHandledAttribute(a_this->actorValue)) {
+        const auto av = a_this ? a_this->actorValue : RE::ActorValue::kNone;
+        const bool isConfirm = (a_msg == Message::kUnk0);
+        const bool handled =
+            av == RE::ActorValue::kHealth ||
+            av == RE::ActorValue::kMagicka ||
+            av == RE::ActorValue::kStamina;
+
+        if (!isConfirm || !handled) {
             g_originalRun(a_this, a_msg);
             return;
         }
 
-        const auto setting = GetLevelUpGainSetting();
-        if (!setting) {
-            logger::warn("iAVDhmsLevelup not found. Running vanilla level-up callback.");
+        const auto player = RE::PlayerCharacter::GetSingleton();
+        if (!player) {
             g_originalRun(a_this, a_msg);
             return;
         }
 
-        const auto oldValue = setting->GetSInt();
-        const auto newValue = GetRaceGain(a_this->actorValue);
+        // Snapshot base value before vanilla runs
+        const float before = player->AsActorValueOwner()->GetBaseActorValue(av);
 
-        // Clean path: change what vanilla reads before it applies the level-up.
-        // No cache, no after-the-fact add, no subtract correction.
-        setting->data.i = newValue;
-
-        logger::debug("Level-up {} gain override: {} -> {}", ActorValueName(a_this->actorValue), oldValue, newValue);
-
+        // Let vanilla run normally so menu closes
         g_originalRun(a_this, a_msg);
 
-        setting->data.i = oldValue;
+        // Snapshot after — vanilla gain = after - before
+        const float after = player->AsActorValueOwner()->GetBaseActorValue(av);
+        const float vanillaGain = after - before;
+
+        // Undo vanilla gain, apply ours
+        const float ourGain = static_cast<float>(GetRaceGain(av));
+        player->AsActorValueOwner()->ModActorValue(av, ourGain - vanillaGain);
+
+        logger::info("Level-up: vanilla={} ours={} net={}", vanillaGain, ourGain, ourGain - vanillaGain);
     }
 }
 
@@ -97,14 +59,8 @@ namespace LevelUpHook
 {
     void Install()
     {
-        if (g_installed) {
-            return;
-        }
-
         REL::Relocation<std::uintptr_t> vtbl{ RE::VTABLE___ConfirmLevelUpAttributeCallback[0] };
         g_originalRun = vtbl.write_vfunc(0x1, RunHook);
-
-        g_installed = true;
-        logger::info("Installed ConfirmLevelUpAttributeCallback::Run hook.");
+        logger::info("LevelUpHook installed.");
     }
 }
