@@ -1,0 +1,21 @@
+{
+  "HitMapping": [
+    {
+      "Comment": "Bloodthirst: an Orsimer tearing life out of a living target sounds wetter than a plain sword hit. HitMapping, not ImpactMapping, so it layers on Sanguine Symphony rather than overriding it.",
+      "Priority": 100,
+      "Filters": {
+        "Attacker": {
+          "Perks": ["Aetherial Bloodlines.esp:0x824"]
+        },
+        "HitContext": {
+          "WeaponTypes": ["OneHandSword", "TwoHandSword", "OneHandAxe", "TwoHandAxe", "OneHandMace", "TwoHandMace", "Dagger", "HandToHand"],
+          "Blocked": ["No"],
+          "States": ["Alive"]
+        }
+      },
+      "Modifiers": {
+        "ExtraSound": "Aetherial Bloodlines.esp:0x1D"
+      }
+    }
+  ]
+}

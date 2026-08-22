@@ -1,19 +1,10 @@
 ---
-# This file is optional but helps me ensure the same
-# code style is used in all templates.
+# Code style for this project.
 #
-# You can find out more about these configuration files at:
-# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+# Configure your IDE to use "clang-format"; the exact steps differ per IDE. LLVM ships it, and
+# Visual Studio bundles a copy at VC\Tools\Llvm\x64\bin\clang-format.exe.
+# Options reference: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
 #
-# To use this file, configure your IDE to use "clang-format".
-# This will be different for each IDE.
-#
-# You can download "clang-format" by installing LLVM from here:
-# https://github.com/llvm/llvm-project/releases
-#
-# ^ look for the latest release which has a win64.exe installer
-#   and be sure to choose the option to add LLVM to your PATH
-#   when installing
 #
 UseTab: Never
 TabWidth: '4'
@@ -24,5 +15,30 @@ ColumnLimit: 120
 NamespaceIndentation: All
 IndentPPDirectives: BeforeHash
 FixNamespaceComments: false
+
+# namespace / function / class break; if / for / while stay attached.
+BreakBeforeBraces: Linux
+
+# `if (!player) return 10;` stays on one line, but never with an else.
+AllowShortIfStatementsOnASingleLine: WithoutElse
+
+# Never fold a function body onto its signature, even a one-line getter.
+AllowShortFunctionsOnASingleLine: None
+
+# Keep multi-line lambdas as written.
+AllowShortLambdasOnASingleLine: None
+
+# `int x{ 0 }` rather than `int x{0}`, matching the member initialisers throughout.
+Cpp11BracedListStyle: false
+
+# `RE::TESGlobal* ptr`, not `RE::TESGlobal *ptr`.
+PointerAlignment: Left
+
+# PCH.h has to stay first, so leave include order alone.
+SortIncludes: false
+
+# One comment, one line. ColumnLimit applies to code only; without this clang-format would rewrap
+# every comment back to 120 columns.
+ReflowComments: false
 
 ...

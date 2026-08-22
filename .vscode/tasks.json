@@ -1,0 +1,58 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "shell": {
+      "executable": "cmd.exe",
+      "args": ["/d", "/c"]
+    },
+    "env": {
+      "PATH": "${env:PATH};C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer"
+    }
+  },
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated",
+    "clear": true
+  },
+  "problemMatcher": "$msCompile",
+  "tasks": [
+    {
+      "label": "Build (release)",
+      "detail": "Compile and deploy to the Lumina mod folder. This is the build that ships.",
+      "type": "shell",
+      "command": "call \"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat\" >nul && \"C:\\Development\\CMake\\bin\\cmake.exe\" --build build\\release",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Configure (release)",
+      "detail": "Re-run CMake. Required after adding or removing a .cpp, because autoCollectSources globs at configure time.",
+      "type": "shell",
+      "command": "call \"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat\" >nul && \"C:\\Development\\CMake\\bin\\cmake.exe\" --preset release",
+      "group": "build"
+    },
+    {
+      "label": "Configure and build (release)",
+      "detail": "Use this after adding a new source file, to avoid LNK2001 on functions that are plainly defined.",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Configure (release)", "Build (release)"],
+      "group": "build"
+    },
+    {
+      "label": "Build (debug)",
+      "detail": "Also deploys to the Lumina mod folder and overwrites the release DLL. Around 5x the size, logs at trace.",
+      "type": "shell",
+      "command": "call \"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat\" >nul && \"C:\\Development\\CMake\\bin\\cmake.exe\" --build build\\debug",
+      "group": "build"
+    },
+    {
+      "label": "Which DLL is deployed?",
+      "detail": "Prints size and timestamp of the live DLL. Around 987 KB is release, around 5 MB is debug.",
+      "type": "shell",
+      "command": "dir \"C:\\Lumina\\mods\\Aetherial Bloodlines - A Race Overhaul\\SKSE\\Plugins\\AetherialBloodlines.dll\"",
+      "problemMatcher": []
+    }
+  ]
+}

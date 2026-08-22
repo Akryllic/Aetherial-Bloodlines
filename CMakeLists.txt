@@ -13,9 +13,9 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 cmake_minimum_required(VERSION 3.21)
 
-set(AUTHOR_NAME "Ivy")
+set(AUTHOR_NAME "Ivy | Apodiectic")
 set(PRODUCT_NAME "AetherialBloodlines")
-project(${PRODUCT_NAME} VERSION 0.1.0.0 LANGUAGES CXX)
+project(${PRODUCT_NAME} VERSION 1.1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,7 +37,7 @@ add_custom_command(
 
 add_custom_target(Resource ALL DEPENDS ${RESOURCE_OUTPUT})
 
-set(ENABLE_SKYRIM_SE ON CACHE BOOL " " FORCE)
+set(ENABLE_SKYRIM_SE OFF CACHE BOOL " " FORCE)
 set(ENABLE_SKYRIM_AE ON CACHE BOOL " " FORCE)
 set(ENABLE_SKYRIM_VR ON CACHE BOOL " " FORCE)
 set(BUILD_TESTS OFF CACHE BOOL " " FORCE)
@@ -81,3 +81,15 @@ set(steam_mods_output true)
 set(lorerim_mods_output false)
 set(lorerim3_mods_output true)
 automaticGameFolderOutput(wildlander_output, steam_owrt_output, steam_mods_output lorerim_mods_output lorerim3_mods_output)
+
+# Lumina modlist output. automaticGameFolderOutput expects an env var pointing at a *mods root* and
+# appends /${PRODUCT_NAME}, which would land in "mods/AetherialBloodlines". This is the mod folder
+# itself, so call copyOutputs directly. Override with -DLUMINA_MOD_FOLDER=... if the path moves.
+if(NOT DEFINED LUMINA_MOD_FOLDER)
+  set(LUMINA_MOD_FOLDER "C:/Lumina/mods/Aetherial Bloodlines - A Race Overhaul")
+endif()
+if(IS_DIRECTORY "${LUMINA_MOD_FOLDER}")
+  copyOutputs("${LUMINA_MOD_FOLDER}")
+else()
+  message(WARNING "LUMINA_MOD_FOLDER not found, skipping Lumina output: ${LUMINA_MOD_FOLDER}")
+endif()

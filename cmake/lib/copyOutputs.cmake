@@ -21,12 +21,12 @@ function(copyOutputs TARGET_FOLDER)
         )
     endif()
 
-    # Copy packaged mod files, including Data/SKSE/Plugins/AetherialBloodlines.ini.
+    # Install packaged mod files. Never overwrites a file the user already has.
     if(EXISTS "${PROJECT_SOURCE_DIR}/data")
         add_custom_command(
             TARGET "${PROJECT_NAME}"
             POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy_directory "${PROJECT_SOURCE_DIR}/data" "${TARGET_FOLDER}"
+            COMMAND "${CMAKE_COMMAND}" -DSOURCE_DIR=${PROJECT_SOURCE_DIR}/data -DDEST_DIR=${TARGET_FOLDER} -P "${PROJECT_SOURCE_DIR}/cmake/lib/copyNewOnly.cmake"
             VERBATIM
         )
     endif()

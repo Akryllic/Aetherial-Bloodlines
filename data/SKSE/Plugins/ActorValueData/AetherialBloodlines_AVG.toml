@@ -1,0 +1,22 @@
+# Aetherial Bloodlines stacking counters, for Actor Value Generator.
+#
+# These replace the GlobalVariables Apo_OathForged_Counter and Apo_BosmerBuff_Counter. A global is
+# one number for the whole game, so it could only ever track the player, and the perk tiers keyed to
+# it were buffing every NPC of the race at the same time. An adaptive extra value is stored per
+# actor and persists in the save exactly as an actor value does.
+#
+# alias + plugins mean that inside Aetherial Bloodlines.esp and anything mastering it, a condition
+# written against Variable01 or Variable02 reads these instead. The redirect is scoped to those
+# plugins, so what any other mod keeps in Variable01 and Variable02 is untouched. That matters:
+# vanilla BYOH adoption writes Variable02 and Variable08, and Simple Follower Framework writes
+# Variable04, so no vanilla variable slot is actually free across a full load order.
+
+[Apo_OathForgedStacks]
+type = "Adaptive"
+alias = "Variable01"
+plugins = ["Aetherial Bloodlines.esp"]
+
+[Apo_GreenPactStacks]
+type = "Adaptive"
+alias = "Variable02"
+plugins = ["Aetherial Bloodlines.esp"]
