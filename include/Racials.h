@@ -24,6 +24,7 @@ namespace Racials
         bool ready{ false };
         bool avgReady{ false };
         std::int32_t hitLogRemaining{ 0 };
+        std::int32_t animTagLogRemaining{ 0 };
 
         std::int32_t orcStacks{ 0 };
         std::int32_t bosmerStacks{ 0 };
@@ -66,5 +67,9 @@ namespace Racials
 
     /// @brief Log the next @p a_hits hits the player lands, and any counter cleared meanwhile.
     void StartHitLog(std::int32_t a_hits);
+
+    /// @brief Log the next @p a_tags animation tags containing "dodge", from any graph we are sinked to.
+    /// @note Matches on substring rather than TKDR_DodgeStart, because the tag that should arrive never has.
+    void StartAnimTagLog(std::int32_t a_tags);
 
 }

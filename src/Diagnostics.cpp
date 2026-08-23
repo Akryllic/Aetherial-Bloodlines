@@ -35,6 +35,7 @@ namespace
     int g_orcOverride{ 0 };
     int g_bosmerOverride{ 0 };
     int g_hitLogCount{ 20 };
+    int g_animTagLogCount{ 20 };
 
     void DrawPlayerState()
     {
@@ -157,6 +158,19 @@ namespace
             ImGuiMCP::TextColored(PanelUI::GOOD, "%d to go", snap.hitLogRemaining);
         }
         ImGuiMCP::TextDisabled("Forces the next N hits you land to log at info, whatever the level above.");
+
+        ImGuiMCP::SeparatorText("Dodge tag log");
+        ImGuiMCP::SetNextItemWidth(180.0f);
+        ImGuiMCP::SliderInt("Tags to log", &g_animTagLogCount, 1, 100);
+        ImGuiMCP::SameLine();
+        if (ImGuiMCP::Button(snap.animTagLogRemaining > 0 ? "Stop##animtag" : "Start##animtag")) {
+            Racials::StartAnimTagLog(snap.animTagLogRemaining > 0 ? 0 : g_animTagLogCount);
+        }
+        if (snap.animTagLogRemaining > 0) {
+            ImGuiMCP::SameLine();
+            ImGuiMCP::TextColored(PanelUI::GOOD, "%d to go", snap.animTagLogRemaining);
+        }
+        ImGuiMCP::TextDisabled("Logs animation tags containing \"dodge\". Arm it, then dodge, to find the tag the Shehai needs.");
     }
 
     void DrawVoice()

@@ -141,6 +141,20 @@ namespace
     std::int32_t g_dodgeAttachTries{ 0 };
     std::int32_t g_animTagLogRemaining{ 0 };
 
+    bool TagLooksLikeDodge(const RE::BSFixedString& a_tag)
+    {
+        const char* tag = a_tag.c_str();
+        if (!tag) return false;
+        for (const char* p = tag; *p; ++p) {
+            if ((*p | 0x20) != 'd') continue;
+            const char* want = "odge";
+            const char* q = p + 1;
+            for (; *want && *q && (*q | 0x20) == *want; ++q, ++want) {}
+            if (!*want) return true;
+        }
+        return false;
+    }
+
     // Shehai's running combo. The target is held so hits scattered across a crowd never stack
     RE::FormID g_shehaiTarget{ 0 };
     std::int32_t g_shehaiCount{ 0 };
@@ -1023,7 +1037,8 @@ namespace
                 return RE::BSEventNotifyControl::kContinue;
             }
 
-            if (g_animTagLogRemaining > 0) {
+            // Any dodge tag, not TKDR_DodgeStart alone: the tag we are hunting has never been seen, so naming it would hide it
+            if (g_animTagLogRemaining > 0 && TagLooksLikeDodge(a_event->tag)) {
                 --g_animTagLogRemaining;
                 logger::info("anim: \"{}\" | {} left", a_event->tag.c_str(), g_animTagLogRemaining);
             }
@@ -1352,9 +1367,6 @@ namespace Racials
 
         TryAttachDodgeSink();
 
-        // One short sample per session, so the graph's real tags are on record without ongoing noise
-        g_animTagLogRemaining = 40;
-
         logger::info("Racials: event sinks registered (combat, hit x2, equip, power cast, death).");
 
         // The published offsets are SE and AE only, and REL::Relocate's two argument form would hand the SE one to VR unchecked
@@ -1374,6 +1386,7 @@ namespace Racials
         s.ready = g_ready;
         s.avgReady = g_avgReady;
         s.hitLogRemaining = g_hitLogRemaining;
+        s.animTagLogRemaining = g_animTagLogRemaining;
         s.orcStacks = GetStacks(Player(), g_orcStacksAV);
         s.bosmerStacks = GetStacks(Player(), g_bosmerStacksAV);
 
@@ -1426,6 +1439,12 @@ namespace Racials
     {
         g_hitLogRemaining = a_hits;
         logger::info("Hit logging armed for the next {} hits.", a_hits);
+    }
+
+    void StartAnimTagLog(std::int32_t a_tags)
+    {
+        g_animTagLogRemaining = a_tags;
+        logger::info("Dodge tag logging armed for the next {} tags.", a_tags);
     }
 
 }
