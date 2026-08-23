@@ -46,6 +46,13 @@ cmake --build build/release
 
 Needs CMake, vcpkg with `VCPKG_ROOT` set, and CommonLibSSE-NG with `COMMONLIB_SSE_FOLDER` set.
 
+## License
+
+GPL-3.0. See [LICENSE](LICENSE).
+
+CommonLibSSE-NG is GPL-3.0-or-later from its v5.0.0 release onward, which is what this plugin links.
+The bundled Actor Value Generator header is Apache-2.0, whose notice stands.
+
 ## Credits
 
 - [CharmedBaryon](https://github.com/CharmedBaryon/CommonLibSSE-NG) and
