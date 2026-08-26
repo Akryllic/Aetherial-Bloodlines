@@ -602,11 +602,14 @@ namespace
     {
         if (g_pyreUsedThisFight || !g_forms.velothsPyre) return;
         if (!MCP::RacialNegativesEnabled()) return;
-        if (!HasPerk(a_player, g_forms.dunmerPerk)) return;
-        if (!a_player->IsInCombat()) return;
         const float threshold = MCP::PyreHealthThreshold();
         if (threshold <= 0.0f) return;  // slider at 0 turns it off
         if (GetActorValuePercentage(a_player, RE::ActorValue::kHealth) >= threshold) return;
+
+        // Last, not first: this runs every frame of every fight, and HasPerk walks the actor's perk list.
+        // Behind the health gate it only runs when the pyre is about to fire. Caching the race instead
+        // would go stale the moment a vampire turns
+        if (!HasPerk(a_player, g_forms.dunmerPerk)) return;
 
         g_pyreUsedThisFight = true;
         g_pyreTier = 1;
@@ -1307,8 +1310,10 @@ namespace Racials
 
     void RegisterPrecision()
     {
-        auto* api = static_cast<PRECISION_API::IVPrecision4*>(
-            PRECISION_API::RequestPluginAPI(PRECISION_API::InterfaceVersion::V4));
+        auto* api = static_cast<PRECISION_API::IVPrecision1*>(
+            // V1, not V4: the only call made is AddPostHitCallback, which IVPrecision1 declares.
+            // Asking above the installed build returns null with nothing logged either side
+            PRECISION_API::RequestPluginAPI(PRECISION_API::InterfaceVersion::V1));
         if (!api) {
             logger::info("Racials: Precision not found, Bloodthirst uses the max health fallback.");
             return;
