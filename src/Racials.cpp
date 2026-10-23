@@ -485,23 +485,50 @@ namespace
         return std::max(fromWound, BloodthirstAmount(a_orc, a_stacks, 1.0f));
     }
 
+    // VR's list is locked by the engine, so it is walked through a stack visitor rather than read directly
+    template <class Fn>
+    void ForEachEffectFrom(RE::Actor* a_actor, RE::MagicItem* a_spell, Fn&& a_fn)
+    {
+        if (!a_actor || !a_spell) return;
+
+        auto* magicTarget = a_actor->AsMagicTarget();
+        if (!magicTarget) return;
+
+        if (REL::Module::IsVR()) {
+            struct Visitor : RE::MagicTarget::ForEachActiveEffectVisitor
+            {
+                Visitor(RE::MagicItem* a_spell, Fn& a_fn) : spell(a_spell), fn(a_fn) {}
+
+                RE::BSContainer::ForEachResult Accept(RE::ActiveEffect* a_effect) override
+                {
+                    const bool stop = a_effect && a_effect->spell == spell && fn(a_effect);
+                    return stop ? RE::BSContainer::ForEachResult::kStop : RE::BSContainer::ForEachResult::kContinue;
+                }
+
+                RE::MagicItem* spell;
+                Fn&            fn;
+            } visitor{ a_spell, a_fn };
+            magicTarget->ForEachActiveEffect(visitor);
+            return;
+        }
+
+        auto* effects = magicTarget->GetActiveEffectList();
+        if (!effects) return;
+
+        for (auto* effect : *effects) {
+            if (effect && effect->spell == a_spell && a_fn(effect)) return;
+        }
+    }
+
     // Matched on ActiveEffect::spell, so the C++ never restates a duration the record already owns
     [[nodiscard]] bool HasActiveEffectFrom(RE::Actor* a_actor, RE::MagicItem* a_spell)
     {
-        if (!a_actor || !a_spell) return false;
-
-        auto* magicTarget = a_actor->AsMagicTarget();
-        if (!magicTarget) return false;
-
-        auto* effects = magicTarget->GetActiveEffectList();
-        if (!effects) return false;
-
-        for (auto* effect : *effects) {
-            if (!effect) continue;
-            if (effect->flags.any(RE::ActiveEffect::Flag::kInactive)) continue;
-            if (effect->spell == a_spell) return true;
-        }
-        return false;
+        bool found = false;
+        ForEachEffectFrom(a_actor, a_spell, [&found](RE::ActiveEffect* a_effect) {
+            found = !a_effect->flags.any(RE::ActiveEffect::Flag::kInactive);
+            return found;
+        });
+        return found;
     }
 
     // Recasting restarts the record's own duration, which is why nothing here knows how long it is
@@ -515,21 +542,22 @@ namespace
         }
     }
 
-    // Collected before dispelling, because Dispel mutates the list being walked
+    // Collected before dispelling, except on VR whose effects are not refcounted and cannot be held past the walk
     void DispelEffectsFrom(RE::Actor* a_actor, RE::MagicItem* a_spell)
     {
-        if (!a_actor || !a_spell) return;
-
-        auto* magicTarget = a_actor->AsMagicTarget();
-        if (!magicTarget) return;
-
-        auto* effects = magicTarget->GetActiveEffectList();
-        if (!effects) return;
+        if (REL::Module::IsVR()) {
+            ForEachEffectFrom(a_actor, a_spell, [](RE::ActiveEffect* a_effect) {
+                a_effect->Dispel(true);
+                return false;
+            });
+            return;
+        }
 
         std::vector<RE::ActiveEffect*> doomed;
-        for (auto* effect : *effects) {
-            if (effect && effect->spell == a_spell) doomed.push_back(effect);
-        }
+        ForEachEffectFrom(a_actor, a_spell, [&doomed](RE::ActiveEffect* a_effect) {
+            doomed.push_back(a_effect);
+            return false;
+        });
         for (auto* effect : doomed) {
             effect->Dispel(true);
         }

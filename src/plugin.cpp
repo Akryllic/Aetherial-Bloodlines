@@ -18,9 +18,6 @@ namespace
             // First point at which forms exist. Order matters: settings decide which forms to resolve, forms decide whether the hooks install
             Settings::Load();
 
-            // One allocation for every write_call in the plugin, because a second AllocTrampoline releases the first block and orphans the stub already written into it
-            SKSE::AllocTrampoline(1 << 6);
-
             LevelUpHook::Install();
 
             GreenPact::LoadSettings();
@@ -65,7 +62,8 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
     SetupLog();
     logger::info("Plugin loaded");
 
-    SKSE::Init(a_skse);
+    // Sized once for every write_call, since a later request is ignored. Logging stays with SetupLog, which Init would otherwise replace. ItzIvy05/GoToBed/src/plugin.cpp:15
+    SKSE::Init(a_skse, { .log = false, .trampoline = true, .trampolineSize = 1 << 6 });
 
     const auto messaging = SKSE::GetMessagingInterface();
     if (!messaging || !messaging->RegisterListener(OnMessage)) {
