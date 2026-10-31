@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "CallSite.h"
 #include "IniText.h"
 #include "Notify.h"
 #include "MCP.h"
@@ -557,8 +558,20 @@ namespace GreenPact
             logger::info("Green Pact: crosshair prompt skipped, the call site offset is unverified on VR.");
         } else {
             REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(39535, 40621), REL::Relocate(0x289, 0x280) };
-            WriteThunkCall<SendHUDMessage>(target.address());
-            logger::info("Green Pact: hooked the crosshair prompt.");
+            const auto site = target.address();
+            const auto dest = CallSite::Destination(site);
+            // Another plugin may hook this call first (Styyx1/ImmersiveActivate/src/Manager.cpp:115), and then the UIMessageQueue load just before it vouches for the site
+            const bool anchored = CallSite::RcxLoadEndingAt(site) == REL::ID(400445).address();
+            if (CallSite::Hookable(dest, REL::ID(13631).address(), anchored)) {
+                const bool chained = !CallSite::InExe(dest);
+                WriteThunkCall<SendHUDMessage>(site);
+                logger::info("Green Pact: hooked the crosshair prompt{}.",
+                             chained ? ", behind another plugin's hook" : "");
+            } else {
+                logger::error("Green Pact: crosshair prompt skipped, SkyrimSE.exe+{:X} is not a verified HUD "
+                              "message call.",
+                              site - REL::Module::get().base());
+            }
         }
 
         logger::info("Green Pact enforcement active.");

@@ -22,6 +22,7 @@
 #include "Precision-API.h"
 #pragma warning(pop)
 
+#include "CallSite.h"
 #include "GreenPact.h"
 #include "Notify.h"
 #include "MCP.h"
@@ -778,7 +779,7 @@ namespace
         }
     }
 
-    // Main update call site (NoahBoddie/poison-aid/src/Hooks.h:341-352, Styyx1/STweaks-Rewrite/src/hooks.h:81)
+    // Main update call site (NoahBoddie/poison-aid/src/Hooks.h:545-548, Styyx1/STweaks-Rewrite/src/hooks.h:81)
     struct MainUpdateHook {
         static void thunk()
         {
@@ -1299,7 +1300,7 @@ namespace Racials
         }
     }
 
-    // Precision's figure is the engine's computed damage, not health removed, so an overkill still pays out in full (Precision/src/PendingHit.cpp:213-231)
+    // Precision's figure is the engine's computed damage, not health removed, so an overkill still pays out in full (ersh1/Precision/src/PendingHit.cpp:213-231)
     void OnPrecisionHit(const PRECISION_API::PrecisionHitData& a_hit, const RE::HitData& a_hitData)
     {
         if (!g_ready) return;
@@ -1408,9 +1409,27 @@ namespace Racials
             return;
         }
 
-        REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(35565, 36564), REL::Relocate(0x748, 0xC26) };
-        MainUpdateHook::func = SKSE::GetTrampoline().write_call<5>(target.address(), MainUpdateHook::thunk);
-        logger::info("Racials: stack decay hooked onto the main update.");
+        // 1.7.104 moved this call to +0xC38 and REL::Relocate cannot tell 1.6 from 1.7 (ersh1/OpenAnimationReplacer/src/Hooks.h:20)
+        const bool ae1799 = REL::Module::IsAtLeast(SKSE::RUNTIME_SSE_1_7_99);
+        REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(35565, 36564),
+                                                REL::Relocate(0x748, ae1799 ? 0xC38 : 0xC26) };
+
+        const auto site = target.address();
+        const auto dest = CallSite::Destination(site);
+        // Other plugins hook this call too (ersh1/Precision/src/Hooks.h:18), so the untouched calls either side vouch for the site
+        const bool anchored = CallSite::Destination(site - 5) == REL::ID(21923).address() ||
+                              CallSite::Destination(site + 5) == REL::ID(78641).address();
+        if (!CallSite::Hookable(dest, REL::ID(21873).address(), anchored)) {
+            logger::error("Racials: stack decay, the Veloth's Pyre re-arm and the dodge sink attach are off, "
+                          "SkyrimSE.exe+{:X} is not a verified main update call.",
+                          site - REL::Module::get().base());
+            return;
+        }
+
+        const bool chained = !CallSite::InExe(dest);
+        MainUpdateHook::func = SKSE::GetTrampoline().write_call<5>(site, MainUpdateHook::thunk);
+        logger::info("Racials: stack decay hooked onto the main update{}.",
+                     chained ? ", behind another plugin's hook" : "");
     }
 
     Snapshot GetSnapshot()
