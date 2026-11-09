@@ -1,7 +1,6 @@
-#include "Diagnostics.h"
 #include "GreenPact.h"
 #include "LevelUpHook.h"
-#include "MCP.h"
+#include "Menu.h"
 #include "Racials.h"
 #include "Settings.h"
 #include "logger.h"
@@ -10,7 +9,7 @@ namespace
 {
     void OnMessage(SKSE::MessagingInterface::Message* a_message)
     {
-        if (!a_message) 
+        if (!a_message)
             return;
 
         switch (a_message->type) {
@@ -24,15 +23,14 @@ namespace
             GreenPact::LoadForms();
             GreenPact::Install();
 
-            MCP::LoadForms();
+            Menu::LoadForms();
 
             Racials::LoadForms();
 
             Racials::LoadShehaiTuning();
             Racials::Register();
 
-            MCP::Register();
-            Diagnostics::Register();
+            Menu::Register();
             break;
 
         // Extra value ids are assigned per save, so they have to be resolved again on every load
@@ -40,7 +38,7 @@ namespace
             Racials::ResolveExtraValues();
             Racials::OnGameLoaded();
             if (Settings::ForceSettingsOnLoad()) {
-                MCP::ApplyDefaults();
+                Menu::ApplyDefaults();
             }
             break;
 
@@ -48,7 +46,7 @@ namespace
         case SKSE::MessagingInterface::kNewGame:
             Racials::ResolveExtraValues();
             Racials::OnGameLoaded();
-            MCP::ApplyDefaults();
+            Menu::ApplyDefaults();
             break;
 
         default:

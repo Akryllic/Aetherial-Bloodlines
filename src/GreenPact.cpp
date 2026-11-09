@@ -2,6 +2,7 @@
 #include "GreenPact.h"
 
 #include <algorithm>
+#include <atomic>
 #include <charconv>
 #include <chrono>
 #include <fstream>
@@ -12,8 +13,9 @@
 
 #include "CallSite.h"
 #include "IniText.h"
+#include "Menu.h"
 #include "Notify.h"
-#include "MCP.h"
+#include "Settings.h"
 
 namespace
 {
@@ -37,6 +39,7 @@ namespace
     };
 
     Config g_config;
+    std::atomic<GreenPact::Mode> g_mode{ GreenPact::Mode::kBlock };
 
     struct Forms {
         RE::BGSListForm* forbiddenPlants{ nullptr };       // Apo_Bosmer_ForbiddenPlants        0x81E
@@ -110,7 +113,7 @@ namespace
         return out;
     }
 
-    // Editor ID first, load order as fallback, because own-record prefixes shift with the master list. 
+    // Editor ID first, load order as fallback, because own-record prefixes shift with the master list.
     // Table-driven pattern from Seb263/SkyrimSE_UnpoisonedBlocking/src/Initialization.hpp:30
     template <class T>
     [[nodiscard]] T* ResolveForm(std::string_view a_editorID, RE::FormID a_localID, std::string_view a_plugin,
@@ -199,7 +202,7 @@ namespace
             return true;
         }
 
-        // 5. If you're reading this, I forgot to add NOTWL and Aspen Trees.... 
+        // 5. If you're reading this, I forgot to add NOTWL and Aspen Trees....
 
         return false;
     }
@@ -220,7 +223,17 @@ namespace
         return actor->HasPerk(g_forms.oathPerk) ? actor : nullptr;
     }
 
-    void AnnounceRefusal(RE::Actor* a_actor)
+    void CastPenalty(RE::Actor* a_actor)
+    {
+        if (!g_forms.penaltySpell || !a_actor) {
+            return;
+        }
+        if (auto* caster = a_actor->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant)) {
+            caster->CastSpellImmediate(g_forms.penaltySpell, false, a_actor, 1.0f, false, 0.0f, a_actor);
+        }
+    }
+
+    void AnnounceRefusal(RE::Actor* a_actor, bool a_castSpell)
     {
         const auto now = std::chrono::steady_clock::now();
         const auto elapsed = std::chrono::duration<float>(now - g_lastNotify).count();
@@ -235,10 +248,8 @@ namespace
         // a_cancelIfAlreadyQueued defaults true, so the engine de-duplicates on top of the cooldown
         Notify::Show(g_messageText.c_str());
 
-        if (g_config.castPenaltySpell && g_forms.penaltySpell && a_actor) {
-            if (auto* caster = a_actor->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant)) {
-                caster->CastSpellImmediate(g_forms.penaltySpell, false, a_actor, 1.0f, false, 0.0f, a_actor);
-            }
+        if (a_castSpell) {
+            CastPenalty(a_actor);
         }
     }
 
@@ -250,7 +261,7 @@ namespace
         }
 
         // Every other racial drawback answers to this switch through a record condition, this one asks
-        if (!MCP::RacialNegativesEnabled()) {
+        if (!Menu::RacialNegativesEnabled() || g_mode == GreenPact::Mode::kOff) {
             return false;
         }
 
@@ -264,10 +275,19 @@ namespace
             return false;
         }
 
+        if (g_mode == GreenPact::Mode::kPenaltyOnly) {
+            logger::debug("Green Pact: penalised {:08X} (produce {:08X}) for {:08X}", a_base->GetFormID(),
+                          a_produce ? a_produce->GetFormID() : 0, actor->GetFormID());
+            // The harvest goes through here, so the penalty can't wait out the message cooldown or a quick second pick would be free
+            CastPenalty(actor);
+            AnnounceRefusal(actor, false);
+            return false;
+        }
+
         logger::debug("Green Pact: refused {:08X} (produce {:08X}) for {:08X}", a_base->GetFormID(),
                       a_produce ? a_produce->GetFormID() : 0, actor->GetFormID());
 
-        AnnounceRefusal(actor);
+        AnnounceRefusal(actor, g_config.castPenaltySpell);
         return true;
     }
 
@@ -308,7 +328,7 @@ namespace
     // Would the player be refused this reference? Same rules as Refuse, minus the notification and the cast
     [[nodiscard]] bool WouldRefusePlayer(RE::TESObjectREFR* a_ref)
     {
-        if (!g_ready || !a_ref || !MCP::RacialNegativesEnabled()) {
+        if (!g_ready || !a_ref || !Menu::RacialNegativesEnabled() || g_mode != GreenPact::Mode::kBlock) {
             return false;
         }
         if (!GetOathBoundActor(RE::PlayerCharacter::GetSingleton())) {
@@ -369,10 +389,20 @@ namespace
 
 namespace GreenPact
 {
+    Mode CurrentMode()
+    {
+        return g_mode;
+    }
+
+    void SetMode(Mode a_mode)
+    {
+        g_mode = a_mode;
+    }
+
     void NotifyOathBroken()
     {
         // Shares AnnounceRefusal's cooldown so eating and harvesting cannot talk over each other
-        AnnounceRefusal(nullptr);
+        AnnounceRefusal(nullptr, false);
     }
 
     std::string DescribeTarget(RE::TESObjectREFR* a_ref)
@@ -425,8 +455,12 @@ namespace GreenPact
 
         const bool forbidden = inPlants || inTrees || inChoppable || inExtra || produceForbidden;
         std::string verdict = forbidden ? "  => would be REFUSED" : "  => would be ALLOWED";
-        if (forbidden && !MCP::RacialNegativesEnabled()) {
+        if (forbidden && !Menu::RacialNegativesEnabled()) {
             verdict += " (but racial drawbacks are off, so it is allowed)";
+        } else if (forbidden && g_mode == Mode::kOff) {
+            verdict += " (but Green Pact mode is Off, so it is allowed)";
+        } else if (forbidden && g_mode == Mode::kPenaltyOnly) {
+            verdict = "  => would be ALLOWED with Penalty Spell";
         }
         lines.push_back(verdict);
 
@@ -442,6 +476,8 @@ namespace GreenPact
     {
         g_config = {};
         g_extraForbidden.clear();
+        const int modeInt = std::clamp(static_cast<int>(Settings::GetSetting("GreenPactMode", 0.0f)), 0, 2);
+        g_mode = static_cast<Mode>(modeInt);
 
         std::ifstream file(INI_PATH);
         if (!file.is_open()) {
@@ -487,8 +523,8 @@ namespace GreenPact
             }
         }
 
-        logger::info("Green Pact settings: choppableTreeList={} penaltySpell={} cooldown={}s extraForms={}",
-                     g_config.useChoppableTreeList, g_config.castPenaltySpell, g_config.notifyCooldown,
+        logger::info("Green Pact settings: mode={} choppableTreeList={} penaltySpell={} cooldown={}s extraForms={}",
+                     modeInt, g_config.useChoppableTreeList, g_config.castPenaltySpell, g_config.notifyCooldown,
                      g_config.extraForbidden.size());
     }
 

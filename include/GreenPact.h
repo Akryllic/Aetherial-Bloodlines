@@ -4,6 +4,13 @@
 
 namespace GreenPact
 {
+    enum class Mode : int
+    {
+        kBlock = 0,
+        kPenaltyOnly = 1,
+        kOff = 2,
+    };
+
     /// @brief Read the [GreenPact] INI section. Safe to call before forms exist.
     void LoadSettings();
 
@@ -12,6 +19,9 @@ namespace GreenPact
 
     /// @brief Install the Activate hooks on TESFlora, TESObjectTREE, TESObjectACTI, TESFurniture.
     void Install();
+
+    [[nodiscard]] Mode CurrentMode();
+    void SetMode(Mode a_mode);
 
     /// @brief Show the oath-broken message, sharing the refusal cooldown.
     /// @note Called when a forbidden food is eaten, so both halves of the oath use one voice.

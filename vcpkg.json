@@ -6,7 +6,7 @@
     "spdlog",
     "rapidcsv",
     "directxtk",
-    "skse-mcp"
+    "flick-api"
   ],
   "builtin-baseline": "74e6536215718009aae747d86d84b78376bf9e09"
 }

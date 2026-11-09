@@ -19,7 +19,7 @@ namespace Racials
     /// @brief Register the combat, hit and equip sinks.
     void Register();
 
-    /// @brief Current state, for the Debug page.
+    /// @brief Current state, for the My Bloodline and Diagnostics pages.
     struct Snapshot {
         bool ready{ false };
         bool avgReady{ false };
@@ -28,6 +28,10 @@ namespace Racials
 
         std::int32_t orcStacks{ 0 };
         std::int32_t bosmerStacks{ 0 };
+        std::int32_t shehaiCount{ 0 };
+        std::int32_t pyreTier{ 0 };
+        bool pyreUsedThisFight{ false };
+        bool thuumCutThisRecovery{ false };
 
         bool voiceBlockFound{ false };
         std::int32_t voiceState{ 0 };
@@ -39,6 +43,10 @@ namespace Racials
     };
 
     [[nodiscard]] Snapshot GetSnapshot();
+
+    /// @brief Is the Shehai lit on the player right now?
+    /// @note Walks the player's active effects, so call it from the main thread.
+    [[nodiscard]] bool ShehaiActive();
 
     /// @brief Is Precision installed and driving Bloodthirst's trickle?
     /// @note When true the trickle is a share of the blow's damage; when false, of max Health.

@@ -24,8 +24,8 @@
 
 #include "CallSite.h"
 #include "GreenPact.h"
+#include "Menu.h"
 #include "Notify.h"
-#include "MCP.h"
 #include "Settings.h"
 
 namespace
@@ -368,7 +368,7 @@ namespace
     {
         if (!a_orc || a_stacks <= 0) return 0.0f;
 
-        const float atFullStacks = MCP::BloodthirstFraction();
+        const float atFullStacks = Menu::BloodthirstFraction();
         if (atFullStacks <= 0.0f) return 0.0f;  // slider at 0 turns it off
 
         const float maxHealth = a_orc->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth);
@@ -423,7 +423,7 @@ namespace
     // A new target or too long a pause starts the count again at one
     void AdvanceShehai(RE::Actor* a_actor, RE::FormID a_target, const char* a_why)
     {
-        if (!g_forms.shehai || !MCP::RacialNegativesEnabled()) return;
+        if (!g_forms.shehai || !Menu::RacialNegativesEnabled()) return;
         if (!HasPerk(a_actor, g_forms.redguardPerk) || !IsDualWielding(a_actor)) return;
 
         const auto now = std::chrono::steady_clock::now();
@@ -467,7 +467,7 @@ namespace
     {
         if (a_stacks <= 0 || a_damage <= 0.0f) return 0.0f;
 
-        const float share = MCP::BloodthirstFraction() * BLOODTHIRST_DAMAGE_SCALE;
+        const float share = Menu::BloodthirstFraction() * BLOODTHIRST_DAMAGE_SCALE;
         if (share <= 0.0f) return 0.0f;  // slider at 0 turns it off
         return a_damage * share * static_cast<float>(a_stacks) / ORC_MAX_STACKS;
     }
@@ -566,7 +566,7 @@ namespace
 
     void TryPyreRenewal(RE::Actor* a_player)
     {
-        if (!MCP::RacialNegativesEnabled()) return;
+        if (!Menu::RacialNegativesEnabled()) return;
         if (!HasPerk(a_player, g_forms.dunmerPerk)) return;
         if (g_pyreTier <= 0) return;
 
@@ -588,7 +588,7 @@ namespace
     // A script restore is the point, not an implementation detail: it bypasses the Orsimer healing drawback
     void TryBloodthirst(RE::Actor* a_orc, RE::Actor* a_victim)
     {
-        if (!MCP::RacialNegativesEnabled()) return;
+        if (!Menu::RacialNegativesEnabled()) return;
 
         // An empty or missing list excludes nobody, so a bad record never silently disables the ability
         if (ActorMatchesList(a_victim, g_forms.bloodthirstExclusions)) {
@@ -609,7 +609,7 @@ namespace
     // Normal hits build the counter, power attacks empty it, and the two stay exclusive
     void TryBloodthirstSpend(RE::Actor* a_orc, RE::Actor* a_victim)
     {
-        if (!MCP::RacialNegativesEnabled()) return;
+        if (!Menu::RacialNegativesEnabled()) return;
         if (ActorMatchesList(a_victim, g_forms.bloodthirstExclusions)) return;
 
         const auto stacks = GetStacks(a_orc, g_orcStacksAV);
@@ -630,14 +630,13 @@ namespace
     void TryVelothsPyre(RE::Actor* a_player)
     {
         if (g_pyreUsedThisFight || !g_forms.velothsPyre) return;
-        if (!MCP::RacialNegativesEnabled()) return;
-        const float threshold = MCP::PyreHealthThreshold();
+        if (!Menu::RacialNegativesEnabled()) return;
+        const float threshold = Menu::PyreHealthThreshold();
         if (threshold <= 0.0f) return;  // slider at 0 turns it off
         if (GetActorValuePercentage(a_player, RE::ActorValue::kHealth) >= threshold) return;
 
         // Last, not first: this runs every frame of every fight, and HasPerk walks the actor's perk list.
-        // Behind the health gate it only runs when the pyre is about to fire. Caching the race instead
-        // would go stale the moment a vampire turns
+        // Behind the health gate it only runs when the pyre is about to fire, and caching the race instead would go stale the moment a vampire turns.
         if (!HasPerk(a_player, g_forms.dunmerPerk)) return;
 
         g_pyreUsedThisFight = true;
@@ -689,10 +688,10 @@ namespace
     void TryThuumRekindled(RE::Actor* a_player)
     {
         if (!g_forms.thuumRekindled) return;
-        if (!MCP::RacialNegativesEnabled()) return;
+        if (!Menu::RacialNegativesEnabled()) return;
         if (!HasPerk(a_player, g_forms.nordPerk)) return;
 
-        const float fraction = MCP::ThuumCutFraction();
+        const float fraction = Menu::ThuumCutFraction();
         if (fraction <= 0.0f) return;  // slider at 0 turns it off
 
         auto* high = VoiceBlock(a_player);
@@ -1198,7 +1197,8 @@ namespace
 
             // Eating cannot be refused after the fact, so the penalty always fires, routed through GreenPact for one notification path
             if (isPlayer && potion->IsFood() && g_forms.veggieFoods && g_forms.veggieFoods->HasForm(potion) &&
-                HasPerk(actor, g_forms.bosmerPerk) && MCP::RacialNegativesEnabled()) {
+                HasPerk(actor, g_forms.bosmerPerk) && Menu::RacialNegativesEnabled() &&
+                GreenPact::CurrentMode() != GreenPact::Mode::kOff) {
                 GreenPact::NotifyOathBroken();
                 CastOn(g_forms.greenPactPenalty, actor, actor);
             }
@@ -1321,7 +1321,7 @@ namespace Racials
 
         BumpStacks(aggressor, g_orcStacksAV, ORC_MAX_STACKS, "Oath-Forged", "melee hit dealt");
 
-        if (!MCP::RacialNegativesEnabled()) return;
+        if (!Menu::RacialNegativesEnabled()) return;
         if (ActorMatchesList(victim, g_forms.bloodthirstExclusions)) {
             logger::debug("power: Bloodthirst declined, {} is excluded", Who(victim));
             return;
@@ -1441,6 +1441,10 @@ namespace Racials
         s.animTagLogRemaining = g_animTagLogRemaining;
         s.orcStacks = GetStacks(Player(), g_orcStacksAV);
         s.bosmerStacks = GetStacks(Player(), g_bosmerStacksAV);
+        s.shehaiCount = g_shehaiCount;
+        s.pyreTier = g_pyreTier;
+        s.pyreUsedThisFight = g_pyreUsedThisFight;
+        s.thuumCutThisRecovery = g_thuumCutThisRecovery;
 
         if (auto* high = VoiceBlock(Player())) {
             s.voiceBlockFound = true;
@@ -1454,6 +1458,11 @@ namespace Racials
         return s;
     }
 
+    bool ShehaiActive()
+    {
+        return g_forms.shehai && HasActiveEffectFrom(Player(), g_forms.shehai);
+    }
+
     bool PrecisionDriving()
     {
         return g_precisionDriving;
@@ -1461,7 +1470,7 @@ namespace Racials
 
     float BloodthirstDamageShare()
     {
-        return MCP::BloodthirstFraction() * BLOODTHIRST_DAMAGE_SCALE;
+        return Menu::BloodthirstFraction() * BLOODTHIRST_DAMAGE_SCALE;
     }
 
     ShehaiTuning& Shehai()

@@ -14,7 +14,10 @@ namespace RE
 namespace Settings
 {
     /// @brief Ceiling for a per-level attribute gain, shared by the INI parser and the menu slider so the two cannot disagree about what is a legal value.
-    inline constexpr std::int32_t MAX_GAIN = 30;
+    inline constexpr std::int32_t MAX_GAIN = 50;
+
+    /// @brief Standard per-level attribute budget across all three pools.
+    inline constexpr std::int32_t STANDARD_TOTAL = 30;
 
     struct AttributeGains
     {
@@ -48,10 +51,16 @@ namespace Settings
     /// @brief The gains an INI section currently holds, e.g. "NordRace" or "Default".
     [[nodiscard]] AttributeGains GetGainsForSection(std::string_view a_section);
 
+    /// @brief The built-in 30-point default gains for a race section, or 10/10/10 for unknown sections.
+    [[nodiscard]] AttributeGains DefaultGainsForSection(std::string_view a_section);
+
     /// @brief Set one attribute gain in memory. Takes effect on the next level up.
     /// @note Split from the write so a slider drag can apply live without rewriting the file per step.
     void SetGain(std::string_view a_section, RE::ActorValue a_actorValue, std::int32_t a_value);
 
     /// @brief Write the in-memory value for one attribute gain to the INI. Call when editing ends.
     void PersistGain(std::string_view a_section, RE::ActorValue a_actorValue);
+
+    /// @brief Restore every race section's level-up gains to the 30-point standard and write them to the INI.
+    void ResetGainsToDefaults();
 }

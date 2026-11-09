@@ -16,6 +16,28 @@ namespace
 {
     constexpr auto INI_PATH = "Data/SKSE/Plugins/AetherialBloodlines.ini";
 
+    struct DefaultRaceSection
+    {
+        const char* section;
+        Settings::AttributeGains gains;
+    };
+
+    // What Reset All restores, the same values the shipped INI holds, every race summing to 30.
+    // Load never seeds from it, so a vanilla race whose section is deleted falls to [Default] like any other.
+    constexpr DefaultRaceSection DEFAULT_RACE_SECTIONS[] = {
+        { "Default", { 10, 10, 10 } },
+        { "ArgonianRace", { 10, 5, 15 } },
+        { "BretonRace", { 5, 15, 10 } },
+        { "DarkElfRace", { 10, 10, 10 } },
+        { "HighElfRace", { 5, 20, 5 } },
+        { "ImperialRace", { 10, 10, 10 } },
+        { "KhajiitRace", { 10, 5, 15 } },
+        { "NordRace", { 15, 5, 10 } },
+        { "OrcRace", { 20, 5, 5 } },
+        { "RedguardRace", { 10, 5, 15 } },
+        { "WoodElfRace", { 10, 5, 15 } },
+    };
+
     Settings::AttributeGains g_defaultGains{};
     std::unordered_map<std::string, Settings::AttributeGains> g_raceGains;
 
@@ -223,6 +245,32 @@ namespace Settings
         return it != g_raceGains.end() ? it->second : g_defaultGains;
     }
 
+    AttributeGains DefaultGainsForSection(std::string_view a_section)
+    {
+        auto lower = ToLower(std::string(a_section));
+        const auto find = [](std::string_view a_lower) -> const AttributeGains* {
+            for (const auto& entry : DEFAULT_RACE_SECTIONS) {
+                if (ToLower(std::string(entry.section)) == a_lower) {
+                    return &entry.gains;
+                }
+            }
+            return nullptr;
+        };
+        if (const auto* gains = find(lower)) {
+            return *gains;
+        }
+
+        // Same rule as GetForRace, so resetting a vampire section gives it its living race's spread
+        constexpr std::string_view vampireSuffix = "vampire";
+        if (lower.size() > vampireSuffix.size() && lower.ends_with(vampireSuffix)) {
+            lower.resize(lower.size() - vampireSuffix.size());
+            if (const auto* gains = find(lower)) {
+                return *gains;
+            }
+        }
+        return {};
+    }
+
     void SetGain(std::string_view a_section, RE::ActorValue a_actorValue, std::int32_t a_value)
     {
         if (!GainKeyName(a_actorValue)) {
@@ -262,12 +310,27 @@ namespace Settings
         WriteKey(a_section, key, std::format("{} = {}", key, gains.Get(a_actorValue)));
     }
 
+    void ResetGainsToDefaults()
+    {
+        for (const auto& section : g_gainSections) {
+            const auto defaults = DefaultGainsForSection(section);
+            SetGain(section, RE::ActorValue::kHealth, defaults.health);
+            SetGain(section, RE::ActorValue::kMagicka, defaults.magicka);
+            SetGain(section, RE::ActorValue::kStamina, defaults.stamina);
+            PersistGain(section, RE::ActorValue::kHealth);
+            PersistGain(section, RE::ActorValue::kMagicka);
+            PersistGain(section, RE::ActorValue::kStamina);
+        }
+
+        logger::info("Reset all race attribute gains to the 30-point defaults.");
+    }
+
     void Load()
     {
         g_defaultGains = {};
         g_raceGains.clear();
-        g_menuSettings.clear();
         g_gainSections.clear();
+        g_menuSettings.clear();
 
         std::ifstream file(INI_PATH);
         if (!file.is_open()) {
@@ -285,7 +348,7 @@ namespace Settings
         }
 
         {
-            AttributeGains defaults{};
+            AttributeGains defaults = g_defaultGains;
             std::string section;
             for (const auto& l : lines) {
                 if (l.front() == '[' && l.back() == ']') {
@@ -300,12 +363,12 @@ namespace Settings
                 }
             }
             g_defaultGains = defaults;
+            g_raceGains["default"] = g_defaultGains;
         }
 
         {
             std::string section = "default";
             bool skipSection = false;
-            g_raceGains[section] = g_defaultGains;
             for (const auto& l : lines) {
                 if (l.front() == '[' && l.back() == ']') {
                     const auto original = Trim(l.substr(1, l.size() - 2));
@@ -318,7 +381,10 @@ namespace Settings
                         if (!g_raceGains.contains(section)) {
                             g_raceGains[section] = g_defaultGains;
                         }
-                        if (std::ranges::find(g_gainSections, original) == g_gainSections.end()) {
+                        const auto existing = std::ranges::find_if(g_gainSections, [&](const std::string& a_item) {
+                            return ToLower(a_item) == section;
+                        });
+                        if (existing == g_gainSections.end()) {
                             g_gainSections.push_back(original);
                         }
                     }
@@ -363,10 +429,19 @@ namespace Settings
 
     AttributeGains GetForRace(RE::TESRace* a_race)
     {
-        const auto editorID = ToLower(std::string(GetRaceEditorID(a_race)));
+        auto editorID = ToLower(std::string(GetRaceEditorID(a_race)));
         if (!editorID.empty()) {
             if (const auto it = g_raceGains.find(editorID); it != g_raceGains.end()) {
                 return it->second;
+            }
+
+            // Vampire variants share their base race's spread unless the INI names them separately
+            constexpr std::string_view vampireSuffix = "vampire";
+            if (editorID.size() > vampireSuffix.size() && editorID.ends_with(vampireSuffix)) {
+                editorID.resize(editorID.size() - vampireSuffix.size());
+                if (const auto it = g_raceGains.find(editorID); it != g_raceGains.end()) {
+                    return it->second;
+                }
             }
         }
 
