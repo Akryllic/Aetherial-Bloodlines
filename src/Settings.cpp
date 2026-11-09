@@ -162,7 +162,7 @@ namespace Settings
     }
 
     // Rewrites one line in place, so an author's comments and ordering survive being edited from the menu
-    // Shape from ItzIvy05/TearsofKyne/src/Settings.cpp:363, with the section tracked, because every race section repeats Health, Magicka and Stamina
+    // Same approach as ItzIvy05/TearsofKyne/src/Settings.cpp:365-387, but it tracks the section since every race section has its own Health, Magicka and Stamina
     void WriteKey(std::string_view a_section, std::string_view a_key, const std::string& a_formatted)
     {
         const auto wantedSection = ToLower(std::string(a_section));

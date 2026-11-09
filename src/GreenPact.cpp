@@ -25,10 +25,10 @@ namespace
     constexpr std::string_view AB_PLUGIN = "Aetherial Bloodlines.esp";
     constexpr std::string_view WT_PLUGIN = "Woodcutting Tweaks.esp";
 
-    // Matches the EPFD label on perk entry, so the fallback reads like the prompt.
+    // Same text as the perk entry's EPFD label, so the fallback reads like the normal prompt
     constexpr auto FALLBACK_MESSAGE = "The Green Pact Forbids Harming Nature.";
 
-    // A refused activation reports itself consumed
+    // A refused activation returns true, as if it was handled
     constexpr bool BLOCK_RETURNS_TRUE = true;
 
     struct Config {
@@ -58,7 +58,8 @@ namespace
     std::chrono::steady_clock::time_point g_lastNotify{};
     bool g_ready{ false };
 
-    // Self-contained rather than shared with Settings.cpp; this project pulls no INI library
+    // Reads the [GreenPact] section itself with the shared IniText helpers, only the mode comes through Settings
+    // This project doesn't pull in an INI library
 
     using IniText::StripComment;
     using IniText::ToLower;
@@ -113,8 +114,8 @@ namespace
         return out;
     }
 
-    // Editor ID first, load order as fallback, because own-record prefixes shift with the master list.
-    // Table-driven pattern from Seb263/SkyrimSE_UnpoisonedBlocking/src/Initialization.hpp:30
+    // Editor ID first, the plugin and local FormID as the fallback
+    // Optional forms just log a miss, same as Seb263/SkyrimSE_UnpoisonedBlocking/src/Initialization.hpp:34-36
     template <class T>
     [[nodiscard]] T* ResolveForm(std::string_view a_editorID, RE::FormID a_localID, std::string_view a_plugin,
                                  bool a_optional)
@@ -157,7 +158,7 @@ namespace
             return;
         }
 
-        // BGSMessage inherits TESDescription and the default field type 'CSED' is DESC byte-reversed
+        // BGSMessage is a TESDescription, and GetDescription's default field type 'CSED' is just DESC written backwards
         RE::BSString description;
         msg->GetDescription(description, msg);
 
@@ -176,7 +177,7 @@ namespace
 
     [[nodiscard]] bool InList(const RE::BGSListForm* a_list, const RE::TESForm* a_form)
     {
-        // HasForm covers both forms (LNAM) and scriptAddedTempForms, used the same way in vinymayan/Dynamic-Forms-Generator/src/Manager.cpp:4842
+        // HasForm checks the list's own forms and anything a script added, same use as vinymayan/Dynamic-Forms-Generator/src/Manager.cpp:5104
         return a_list && a_form && a_list->HasForm(a_form);
     }
 
@@ -187,17 +188,17 @@ namespace
             return true;
         }
 
-        // 2. base form is choppable per Woodcutting Tweaks' own list, so its additions stay covered
+        // 2. anything on Woodcutting Tweaks' own choppable list, so trees it adds are covered too
         if (g_config.useChoppableTreeList && InList(g_forms.choppableTrees, a_base)) {
             return true;
         }
 
-        // 3. chopping stations and nirnroots, INI-driven so restoring one stays a data change
+        // 3. chopping blocks and the sawmill, listed in the INI so they can change without a rebuild
         if (!g_extraForbidden.empty() && g_extraForbidden.contains(a_base)) {
             return true;
         }
 
-        // 4. the produce rule: what the plant yields, never whether it can be harvested
+        // 4. anything that yields a forbidden ingredient
         if (a_produce && InList(g_forms.forbiddenIngredients, a_produce)) {
             return true;
         }
@@ -238,14 +239,14 @@ namespace
         const auto now = std::chrono::steady_clock::now();
         const auto elapsed = std::chrono::duration<float>(now - g_lastNotify).count();
 
-        // The hook fires on every activation press
+        // The hook fires on every press, so the message needs a cooldown
         if (g_lastNotify.time_since_epoch().count() != 0 && elapsed < g_config.notifyCooldown) {
             return;
         }
 
         g_lastNotify = now;
 
-        // a_cancelIfAlreadyQueued defaults true, so the engine de-duplicates on top of the cooldown
+        // Notify::Show also passes the engine's cancel-if-already-queued flag, on top of the cooldown
         Notify::Show(g_messageText.c_str());
 
         if (a_castSpell) {
@@ -260,12 +261,12 @@ namespace
             return false;
         }
 
-        // Every other racial drawback answers to this switch through a record condition, this one asks
+        // The other drawbacks check this switch through a record condition, this one has to ask in code
         if (!Menu::RacialNegativesEnabled() || g_mode == GreenPact::Mode::kOff) {
             return false;
         }
 
-        // Most selective test first, this is a hot path
+        // Rule out most activations early, this runs on every one
         auto* actor = GetOathBoundActor(a_activatorRef);
         if (!actor) {
             return false;
@@ -292,8 +293,8 @@ namespace
     }
 
     // Activate is vfunc 0x37 on TESFlora, TESObjectTREE, TESObjectACTI and TESFurniture, each with its own vtable
-    // Precedent: vinymayan/Book-of-Perks/src/BookManager.cpp:25-43,351-352
-    // Not a TESActivateEvent sink: kStop halts sink propagation but does not cancel the activation
+    // Same vtable hook as vinymayan/Book-of-Perks/src/BookManager.cpp:26-43,408-409
+    // Not a TESActivateEvent sink, kStop there only stops the other sinks and the activation still happens
     template <class TForm, bool HasProduce>
     struct ActivateHook {
         static bool thunk(TForm* a_self, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef,
@@ -318,8 +319,8 @@ namespace
     template <class TForm, bool HasProduce>
     void InstallOne(std::string_view a_name)
     {
-        // VTABLE[0] is the primary chain, the later entries belong to the inherited components.
-        // All four are REL::VariantID triples, so no manual offsets are needed for SE, AE or VR
+        // VTABLE[0] is the object's main vtable, the others are for its base classes
+        // All four come with SE and AE ids plus a VR offset, so no hand written offsets are needed
         REL::Relocation<std::uintptr_t> vtbl{ TForm::VTABLE[0] };
         ActivateHook<TForm, HasProduce>::func = vtbl.write_vfunc(0x37, ActivateHook<TForm, HasProduce>::thunk);
         logger::info("Green Pact: hooked {}::Activate (vfunc 0x37).", a_name);
@@ -357,8 +358,8 @@ namespace
         T::func = trampoline.write_call<5>(a_src, T::thunk);
     }
 
-    // The activation prompt is a HUDData message, text being newline separated as prompt \n name \n tag.
-    // Recipe from Styyx1/ImmersiveActivate/src/Manager.cpp:38-117
+    // The activation prompt is a HUDData message whose text is the prompt, name and tag on separate lines
+    // Done the same way as Styyx1/ImmersiveActivate/src/Manager.cpp:38-117
     struct SendHUDMessage {
         static void thunk(RE::UIMessageQueue* a_this, const RE::BSFixedString& a_menuName, RE::UI_MESSAGE_TYPE a_type,
                           RE::IUIMessageData* a_data)
@@ -588,7 +589,7 @@ namespace GreenPact
         InstallOne<RE::TESObjectACTI, false>("TESObjectACTI");
         InstallOne<RE::TESFurniture, false>("TESFurniture");
 
-        // Both sources give SE and AE only, and REL::Relocate's two argument form would hand the SE offset to VR unchecked
+        // The published id and offsets only cover SE and AE, and REL::Relocate with two arguments would quietly use the SE offset on VR
         // If you're reading this, feel free to make it compatible with VR
         if (REL::Module::IsVR()) {
             logger::info("Green Pact: crosshair prompt skipped, the call site offset is unverified on VR.");
@@ -596,7 +597,7 @@ namespace GreenPact
             REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(39535, 40621), REL::Relocate(0x289, 0x280) };
             const auto site = target.address();
             const auto dest = CallSite::Destination(site);
-            // Another plugin may hook this call first (Styyx1/ImmersiveActivate/src/Manager.cpp:115), and then the UIMessageQueue load just before it vouches for the site
+            // Another plugin may have hooked this call already (Styyx1/ImmersiveActivate/src/Manager.cpp:115), so the UIMessageQueue load right before it is what proves it's the right spot
             const bool anchored = CallSite::RcxLoadEndingAt(site) == REL::ID(400445).address();
             if (CallSite::Hookable(dest, REL::ID(13631).address(), anchored)) {
                 const bool chained = !CallSite::InExe(dest);

@@ -35,7 +35,8 @@ namespace
     constexpr float THUUM_CUT_FALLBACK = 33.0f;
     constexpr int THUUM_CUT_MAX = 50;
 
-    // Tenths, not whole points: at about five hits in two seconds, 3% of max health returned a sixth of the pool per swing
+    // Percent of max health a hit returns at ten stacks, kept small since a fast fighter lands a hit every half second or so
+    // With Precision the same number is scaled up into a share of the blow's damage
     constexpr float BLOODTHIRST_FALLBACK = 1.5f;
     constexpr float BLOODTHIRST_MAX = 5.0f;
 
@@ -52,7 +53,7 @@ namespace
     constexpr ImVec4 WARN{ 0.90f, 0.72f, 0.22f, 1.0f };
     constexpr ImVec4 BAD{ 0.85f, 0.25f, 0.25f, 1.0f };
 
-    // Only the globals a record condition reads are still globals; a GLOB lives in the save, so an author's edit would never reach an existing character
+    // Only settings a record condition reads stay as globals, a global is saved with the game so an INI edit would never reach an existing character
     RE::TESGlobal* g_racialNegatives{ nullptr };
     RE::TESGlobal* g_drawbackMasteryGlobal{ nullptr };
     RE::TESGlobal* g_thuumMelee{ nullptr };
@@ -292,7 +293,7 @@ namespace
         Settings::SaveSetting(a_iniKey, a_value);
     }
 
-    // Applies every step so the game responds under the cursor, writes once when the drag ends
+    // Applies the value while you drag so you see it change, and only writes the INI once you let go
     void SliderSettingLocal(const char* a_label, float* a_value, std::string_view a_iniKey, float a_min,
                             float a_max, const char* a_format, const char* a_tooltip)
     {
@@ -496,7 +497,7 @@ namespace
             line.note = a_spec.note;
         }
 
-        // Skills and perks are the mastery layer the toggle switches off; gear and spells still count without it
+        // The toggle switches off every exit that needs a skill or a perk, a Siphon or a bound weapon still counts without it
         const bool materialHalves = a_masteryOn && a_spec.materialPerk && ExitPerk(a_spec.materialPerk) &&
                                     a_player->HasPerk(ExitPerk(a_spec.materialPerk)) && WearsSegmentedCuirass(a_player);
         const bool siphonHalves = a_spec.accommodation == Accommodation::kSiphon && SiphonHolds(a_player);
@@ -1068,7 +1069,7 @@ namespace Menu
 
     float PyreHealthThreshold()
     {
-        // Stored as a percentage so the slider and the console read naturally, used as a fraction
+        // Stored as a percent for the slider and the console, used as a fraction
         return std::clamp(g_pyreHealth, 0.0f, 100.0f) * 0.01f;
     }
 
@@ -1136,7 +1137,7 @@ namespace Menu
         };
 
         const Entry entries[]{
-            // Only the save-resident globals need seeding; the rest are read from the INI on every load
+            // Only the globals saved with the game need setting here, everything else is read from the INI on every load
             { g_racialNegatives, GLOBAL_RACIAL_NEGATIVES, "RacialDrawbacks" },
             { g_drawbackMasteryGlobal, GLOBAL_DRAWBACK_MASTERY, "DrawbackMastery" },
             { g_thuumMelee, GLOBAL_THUUM_MELEE, "ThuumMelee" },

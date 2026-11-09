@@ -33,7 +33,6 @@ namespace
     constexpr std::string_view AB_PLUGIN = "Aetherial Bloodlines.esp";
     constexpr std::string_view SKYRIM_ESM = "Skyrim.esm";
 
-    // Lifted verbatim from the Papyrus originals so behaviour does not drift
     constexpr std::int32_t ORC_MAX_STACKS = 10;
     constexpr std::int32_t BOSMER_MAX_STACKS = 6;
     constexpr float IMPERIAL_PROC_CHANCE = 0.15f;
@@ -48,11 +47,11 @@ namespace
     constexpr float REDGUARD_DODGE_COST = 0.75f;
     constexpr float DODGE_COST_NEUTRAL = 1.0f;
 
-    // Stacks drain rather than snap once the fight is over
+    // Stacks drain away after a fight instead of all dropping at once
     constexpr float DECAY_DELAY = 3.0f;     // seconds out of combat before the fall starts
     constexpr float DECAY_INTERVAL = 1.5f;  // seconds per stack lost after that
 
-    // Longer than any alt-death calm, or StopCombat mid-encounter re-arms the pyre on the same bandits
+    // Has to be longer than any alt-death mod's calm down, or a StopCombat mid fight re-arms the pyre on the same bandits
     constexpr float PYRE_REARM_DELAY = 30.0f;
 
     // Kills renew the pyre, so it needs a cap or a long dungeon fight holds it up indefinitely
@@ -122,7 +121,7 @@ namespace
     RE::ActorValue g_bosmerStacksAV{ RE::ActorValue::kNone };
     bool g_avgReady{ false };
 
-    // TK Dodge Addon's own extra value, kNone when the addon is absent, which is the soft dependency
+    // TK Dodge Addon's own extra value, kNone when it isn't installed, so the addon stays optional
     RE::ActorValue g_dodgeCostAV{ RE::ActorValue::kNone };
 
     float g_outOfCombatFor{ 0.0f };
@@ -228,7 +227,7 @@ namespace
         }
     }
 
-    // One timestamp per caster, because the sear is no longer the player's alone
+    // One timestamp per caster, any Altmer can sear, not just the player
     [[nodiscard]] bool SearOffCooldown(RE::Actor* a_actor)
     {
         const auto it = g_lastSear.find(a_actor->GetFormID());
@@ -241,7 +240,7 @@ namespace
     {
         const auto now = std::chrono::steady_clock::now();
 
-        // Prune rather than grow forever, since every Altmer that ever seared would otherwise stay in the map
+        // Trim it, or every Altmer that ever seared would stay in the map forever
         if (g_lastSear.size() > 32) {
             std::erase_if(g_lastSear, [&](const auto& a_entry) {
                 return std::chrono::duration<float>(now - a_entry.second).count() >= ALTMER_PROC_COOLDOWN;
@@ -256,7 +255,7 @@ namespace
         return a_weapon && g_forms.weapTypeBow && a_weapon->HasKeyword(g_forms.weapTypeBow);
     }
 
-    // Only used by the hit log, to settle what source actually holds on a bow hit
+    // Only the hit log uses this, to show what kind of form a hit's source is
     [[nodiscard]] const char* SourceKind(RE::TESForm* a_form)
     {
         if (!a_form) return "none";
@@ -267,7 +266,7 @@ namespace
         return "other";
     }
 
-    // The native Papyrus GetActorValuePercentage resolves to (Styyx1/StyyxUtils/include/st-actor.h:701)
+    // The engine's own actor value percentage function, same relocation as Styyx1/StyyxUtils/include/st-actor.h:701
     [[nodiscard]] float GetActorValuePercentage(RE::Actor* a_actor, RE::ActorValue a_av)
     {
         using func_t = float (*)(RE::Actor*, RE::ActorValue);
@@ -340,7 +339,7 @@ namespace
         SetStacks(a_actor, a_av, GetStacks(a_actor, a_av) + 1, a_max, a_counter, a_why);
     }
 
-    // Direct membership first because it is a lookup; keyword and faction entries are walked
+    // Direct entries first since those are plain pointer compares, keywords and factions in the list need a HasKeyword or IsInFaction call each
     [[nodiscard]] bool ActorMatchesList(RE::Actor* a_actor, RE::BGSListForm* a_list)
     {
         if (!a_actor || !a_list) return false;
@@ -456,7 +455,8 @@ namespace
         logger::debug("power: Shehai answered");
     }
 
-    // Precision carries the real damage figure and drives the melee branch outright, because the order the two fire in is unverified
+    // Once Precision takes our callback it drives the Orsimer melee side on its own, stacks and Bloodthirst, since it has the real damage figure
+    // Which of the two fires first isn't known, so the hit sink leaves that branch alone while it does
     bool g_precisionDriving{ false };
 
     // Both counters only move while Precision drives, so a growing gap means it is not seeing some melee hits
@@ -472,7 +472,7 @@ namespace
         return a_damage * share * static_cast<float>(a_stacks) / ORC_MAX_STACKS;
     }
 
-    // Reads the wound rather than the pool, floored at a normal hit's return
+    // Based on missing health rather than max, and never less than the max health trickle a normal hit gives without Precision
     [[nodiscard]] float BloodthirstSpendAmount(RE::Actor* a_orc, std::int32_t a_stacks)
     {
         if (!a_orc || a_stacks <= 0) return 0.0f;
@@ -486,7 +486,7 @@ namespace
         return std::max(fromWound, BloodthirstAmount(a_orc, a_stacks, 1.0f));
     }
 
-    // VR's list is locked by the engine, so it is walked through a stack visitor rather than read directly
+    // VR has no list to read here, GetActiveEffectList gives back null there, so it gets walked with a visitor instead
     template <class Fn>
     void ForEachEffectFrom(RE::Actor* a_actor, RE::MagicItem* a_spell, Fn&& a_fn)
     {
@@ -521,7 +521,7 @@ namespace
         }
     }
 
-    // Matched on ActiveEffect::spell, so the C++ never restates a duration the record already owns
+    // Matches on the effect's spell, so the record stays in charge of how long it lasts
     [[nodiscard]] bool HasActiveEffectFrom(RE::Actor* a_actor, RE::MagicItem* a_spell)
     {
         bool found = false;
@@ -532,7 +532,7 @@ namespace
         return found;
     }
 
-    // Recasting restarts the record's own duration, which is why nothing here knows how long it is
+    // Recasting restarts the record's own duration, nothing here needs to know how long it is
     [[nodiscard]] RE::SpellItem* PyreSpellForTier(std::int32_t a_tier)
     {
         switch (a_tier) {
@@ -543,7 +543,7 @@ namespace
         }
     }
 
-    // Collected before dispelling, except on VR whose effects are not refcounted and cannot be held past the walk
+    // Collect them first and dispel after, except on VR where effects aren't refcounted and can't be held once the walk ends
     void DispelEffectsFrom(RE::Actor* a_actor, RE::MagicItem* a_spell)
     {
         if (REL::Module::IsVR()) {
@@ -585,7 +585,7 @@ namespace
         logger::debug("power: Veloth's Pyre fed by a kill, now tier {} of {}", g_pyreTier, PYRE_MAX_TIER);
     }
 
-    // A script restore is the point, not an implementation detail: it bypasses the Orsimer healing drawback
+    // Heals with a direct actor value restore on purpose, that's how it gets around the Orsimer healing drawback
     void TryBloodthirst(RE::Actor* a_orc, RE::Actor* a_victim)
     {
         if (!Menu::RacialNegativesEnabled()) return;
@@ -626,7 +626,8 @@ namespace
         logger::debug("power: Bloodthirst spent {} stacks for {:.1f} health", stacks, restore);
     }
 
-    // Fires itself once per fight when the player is nearly down, checked from both the tick and the hit sink because the tick's hook is skipped on VR
+    // Fires on its own once per fight when the player is nearly down
+    // Checked from both the tick and the hit sink, VR doesn't get the tick hook
     void TryVelothsPyre(RE::Actor* a_player)
     {
         if (g_pyreUsedThisFight || !g_forms.velothsPyre) return;
@@ -635,8 +636,9 @@ namespace
         if (threshold <= 0.0f) return;  // slider at 0 turns it off
         if (GetActorValuePercentage(a_player, RE::ActorValue::kHealth) >= threshold) return;
 
-        // Last, not first: this runs every frame of every fight, and HasPerk walks the actor's perk list.
-        // Behind the health gate it only runs when the pyre is about to fire, and caching the race instead would go stale the moment a vampire turns.
+        // Perk check goes last, this runs every frame of a fight and HasPerk is an engine call
+        // Behind the health check it only runs when the pyre is about to fire
+        // Caching the race instead would go stale as soon as someone turns vampire
         if (!HasPerk(a_player, g_forms.dunmerPerk)) return;
 
         g_pyreUsedThisFight = true;
@@ -684,7 +686,7 @@ namespace
                      a_high->voiceRecoveryTime, RecordRecoveryTime(a_high));
     }
 
-    // Once per recovery: repeated cuts compound, and 14 of them took a 17s wait to 0.04s
+    // Only once per recovery, the cuts stack and enough kills would take the cooldown down to nothing
     void TryThuumRekindled(RE::Actor* a_player)
     {
         if (!g_forms.thuumRekindled) return;
@@ -715,7 +717,7 @@ namespace
             logger::debug("power: Thu'um Rekindled, recovery {:.2f} -> {:.2f}", recovery,
                           high->voiceRecoveryTime);
 
-            // The only feedback either half of this gets, and the cut is already once per recovery
+            // The only feedback this gets, and it can't spam since the cut only happens once per recovery
             Notify::Show(THUUM_MESSAGE);
         }
         g_voiceLastSeen = high->voiceRecoveryTime;
@@ -741,7 +743,7 @@ namespace
             return;
         }
 
-        // First frame out of combat, so it reports once per fight; a gap means Precision missed qualifying hits
+        // Runs on the first frame out of combat so it reports once a fight, a gap means Precision missed some hits
         if (g_precisionDriving && g_peaceFor == 0.0f && g_vanillaMeleeSeen > 0) {
             logger::debug("bloodthirst driver: Precision {} of {} eligible melee hits", g_precisionHits,
                           g_vanillaMeleeSeen);
@@ -860,7 +862,7 @@ namespace
 
             auto* victim = a_event->target ? a_event->target->As<RE::Actor>() : nullptr;
 
-            // The countdown forces info, for when the level is left at info and only a short capture is wanted
+            // While the hit log is counting down these go out at info, so a short capture doesn't need debug turned on
             if (byPlayer && (g_hitLogRemaining > 0 || spdlog::should_log(spdlog::level::debug))) {
                 const auto line =
                     std::format("hit: source {:08X} {} \"{}\" | projectile {:08X} | melee={} bow={} bash={} blocked={}",
@@ -883,7 +885,8 @@ namespace
                 ++g_vanillaMeleeSeen;
             }
 
-            // Blocked blows do not wound, ranged and magic are not melee. IncomingHitSink carries the mirror of this for hits taken
+            // Blocked blows don't wound, ranged and magic aren't melee
+            // IncomingHitSink does the same for hits taken
             if (g_precisionDriving) {
                 // Precision owns the Orsimer branch outright, see OnPrecisionHit
             } else if (meleeWeaponHit && !blocked && liveVictim && HasPerk(aggressor, g_forms.orcPerk)) {
@@ -896,7 +899,7 @@ namespace
                     TryBloodthirst(aggressor, victim);
                 }
             } else if (byPlayer && meleeWeaponHit && !blocked && HasPerk(aggressor, g_forms.orcPerk)) {
-                // Which arm of liveVictim refused; "nothing happened" reads identically for a corpse, a barrel or the player
+                // Logs which part of liveVictim failed, otherwise a corpse, a barrel and the player all look the same
                 logger::debug("stack: no Oath-Forged, victim {}",
                               !victim               ? "is not an actor"
                               : victim == aggressor ? "is the aggressor"
@@ -1012,7 +1015,7 @@ namespace
                 return RE::BSEventNotifyControl::kContinue;
             }
 
-            // Nothing to refuse yet; every racial ability so far fires itself rather than being cast
+            // Nothing to refuse yet, every racial ability fires on its own instead of being cast
             return RE::BSEventNotifyControl::kContinue;
         }
     };
@@ -1051,7 +1054,8 @@ namespace
         }
     };
 
-    // A dodge carries the Shehai's count rather than breaking it. The tag belongs to TK Dodge RE Addon (Styyx1/TKDodgeAddon/src/AnimationEvents.cpp:40), and never arrives without it
+    // A dodge carries the Shehai's count on instead of breaking it
+    // TKDR_DodgeStart is the same tag TK Dodge RE Addon listens for (Styyx1/TKDodgeAddon/src/AnimationEvents.cpp:39)
     class DodgeSink : public RE::BSTEventSink<RE::BSAnimationGraphEvent>
     {
     public:
@@ -1068,7 +1072,7 @@ namespace
                 return RE::BSEventNotifyControl::kContinue;
             }
 
-            // Any dodge tag, not TKDR_DodgeStart alone: the tag we are hunting has never been seen, so naming it would hide it
+            // Logs any tag with dodge in it, not just TKDR_DodgeStart, in case the real one goes by another name
             if (g_animTagLogRemaining > 0 && TagLooksLikeDodge(a_event->tag)) {
                 --g_animTagLogRemaining;
                 logger::info("anim: \"{}\" | {} left", a_event->tag.c_str(), g_animTagLogRemaining);
@@ -1180,7 +1184,8 @@ namespace
             // baseObject is a FormID, not a pointer
             auto* base = a_event->baseObject ? RE::TESForm::LookupByID(a_event->baseObject) : nullptr;
 
-            // Gloves on and off both matter, so this runs for unequip too. Player only, or every Altmer in a city churns on every equip
+            // Gloves going on and off both matter, so this runs on unequip too
+            // Player only, or every Altmer in a city would churn on every equip
             if (isPlayer) {
                 RefreshHands(actor);
                 RefreshDodgeCost(actor);
@@ -1195,7 +1200,8 @@ namespace
                 return RE::BSEventNotifyControl::kContinue;
             }
 
-            // Eating cannot be refused after the fact, so the penalty always fires, routed through GreenPact for one notification path
+            // You can't refuse food after it's eaten, so the penalty always fires
+            // The message goes through GreenPact so eating and harvesting share one message and its cooldown
             if (isPlayer && potion->IsFood() && g_forms.veggieFoods && g_forms.veggieFoods->HasForm(potion) &&
                 HasPerk(actor, g_forms.bosmerPerk) && Menu::RacialNegativesEnabled() &&
                 GreenPact::CurrentMode() != GreenPact::Mode::kOff) {
@@ -1264,7 +1270,8 @@ namespace Racials
     {
         g_avgReady = false;
 
-        // Ask for the lowest interface carrying ResolveExtraValue. Requesting a higher version than the installed build returns null with nothing logged either side (API_ActorValueGenerator.cpp:89)
+        // Try the newest interface first and fall back to V1, the result only confirms AVG is there and logs its version
+        // Asking for a newer version than the installed one returns null without saying why (API_ActorValueGenerator.cpp:89)
         auto* avg = static_cast<AVG::API::InterfaceVersion1*>(AVG::API::RequestInterface<AVG::API::InterfaceVersion3>(false));
         if (!avg) avg = AVG::API::RequestInterface<AVG::API::InterfaceVersion2>(false);
         if (!avg) avg = AVG::API::RequestInterface<AVG::API::InterfaceVersion1>(false);
@@ -1275,7 +1282,8 @@ namespace Racials
         }
         logger::info("Racials: AVG interface version {}.", static_cast<int>(avg->GetVersion()));
 
-        // Resolve by name. ExtraValue::Resolve only remaps an id already held and returns anything <= kTotal untouched (API_ActorValueGenerator.cpp:18), so a name-built ExtraValue never resolves
+        // Resolve by name
+        // ExtraValue::Resolve only remaps an id we already have and passes anything <= kTotal straight through (API_ActorValueGenerator.cpp:18), so an ExtraValue built from a name never resolves
         g_orcStacksAV = RE::GetActorValueIDFromName("Apo_OathForgedStacks");
         g_bosmerStacksAV = RE::GetActorValueIDFromName("Apo_GreenPactStacks");
         g_dodgeCostAV = RE::GetActorValueIDFromName("DodgeCostModifier");
@@ -1340,8 +1348,8 @@ namespace Racials
     void RegisterPrecision()
     {
         auto* api = static_cast<PRECISION_API::IVPrecision1*>(
-            // V1, not V4: the only call made is AddPostHitCallback, which IVPrecision1 declares.
-            // Asking above the installed build returns null with nothing logged either side
+            // V1 is enough, the only call we make is AddPostHitCallback and IVPrecision1 has it
+            // Asking for a newer version than the installed one just returns null
             PRECISION_API::RequestPluginAPI(PRECISION_API::InterfaceVersion::V1));
         if (!api) {
             logger::info("Racials: Precision not found, Bloodthirst uses the max health fallback.");
@@ -1403,7 +1411,7 @@ namespace Racials
 
         logger::info("Racials: event sinks registered (combat, hit x2, equip, power cast, death).");
 
-        // The published offsets are SE and AE only, and REL::Relocate's two argument form would hand the SE one to VR unchecked
+        // The published offsets are only SE and AE, and REL::Relocate with two arguments would quietly use the SE one on VR
         if (REL::Module::IsVR()) {
             logger::info("Racials: stack decay skipped, the update call site is unverified on VR.");
             return;

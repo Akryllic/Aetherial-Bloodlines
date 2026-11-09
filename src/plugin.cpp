@@ -14,7 +14,8 @@ namespace
 
         switch (a_message->type) {
         case SKSE::MessagingInterface::kDataLoaded:
-            // First point at which forms exist. Order matters: settings decide which forms to resolve, forms decide whether the hooks install
+            // Forms exist from here on
+            // Order matters, the settings decide which forms to look up and the forms decide whether the hooks go in
             Settings::Load();
 
             LevelUpHook::Install();
@@ -42,7 +43,7 @@ namespace
             }
             break;
 
-        // The settings globals live in the save, so a new character has to be handed the INI's values
+        // The setting globals are saved with the game, so a new character has to get the INI's values here
         case SKSE::MessagingInterface::kNewGame:
             Racials::ResolveExtraValues();
             Racials::OnGameLoaded();
@@ -60,7 +61,9 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
     SetupLog();
     logger::info("Plugin loaded");
 
-    // Sized once for every write_call, since a later request is ignored. Logging stays with SetupLog, which Init would otherwise replace. ItzIvy05/GoToBed/src/plugin.cpp:15
+    // Trampoline gets sized here in Init for every write_call, same as ItzIvy05/GoToBed/src/plugin.cpp:15
+    // Asking for more later does nothing, CommonLibSSE-NG only sets it up once
+    // log = false keeps our SetupLog logger, Init would replace it otherwise
     SKSE::Init(a_skse, { .log = false, .trampoline = true, .trampolineSize = 1 << 6 });
 
     const auto messaging = SKSE::GetMessagingInterface();

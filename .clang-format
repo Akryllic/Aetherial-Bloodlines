@@ -37,8 +37,8 @@ PointerAlignment: Left
 # PCH.h has to stay first, so leave include order alone.
 SortIncludes: false
 
-# One comment, one line. ColumnLimit applies to code only; without this clang-format would rewrap
-# every comment back to 120 columns.
+# One sentence per comment line, however long.
+# With this off, ColumnLimit only wraps code, otherwise clang-format would rewrap every comment to 120 columns.
 ReflowComments: false
 
 ...
