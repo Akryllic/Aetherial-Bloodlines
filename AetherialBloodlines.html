@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aetherial Bloodlines - Interactive Infographic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-canvas: #0b0d11;
+      --bg-poster: #12151b;
+      --bg-surface: #171b22;
+      --bg-elevated: #1e232d;
+      --bg-elevated-hover: #262c38;
+      --bg-track: #101318;
+      --text-primary: #ece5d5;
+      --text-secondary: #c5bca8;
+      --gold: #d9b866;
+      --gold-dim: rgba(217, 184, 102, 0.30);
+      --gold-subtle: rgba(217, 184, 102, 0.10);
+      --teal: #7fc8c8;
+      --teal-dim: rgba(127, 200, 200, 0.30);
+      --teal-subtle: rgba(127, 200, 200, 0.09);
+      --crimson-soft: rgba(209, 102, 90, 0.10);
+      --crimson-border: rgba(217, 120, 108, 0.42);
+      --stat-h: #d46b6b;
+      --stat-m: #6ca4db;
+      --stat-s: #6ebc89;
+      --border-subtle: rgba(236, 229, 213, 0.11);
+      --border-strong: rgba(217, 184, 102, 0.42);
+      --race-accent: #d49a6a;
+      --race-accent-soft: rgba(212, 154, 106, 0.16);
+      --race-accent-border: rgba(212, 154, 106, 0.50);
+      --font-display: 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+      --font-body: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 10px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 15.5px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.25rem 0.85rem 2.5rem;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 85% 40% at 50% 0%, rgba(217, 184, 102, 0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 70% 50% at 50% 100%, rgba(127, 200, 200, 0.05) 0%, transparent 70%),
+        var(--bg-canvas);
+      color: var(--text-primary);
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--teal);
+      outline-offset: 2px;
+    }
+
+    /* Infographic Poster Frame */
+    .infographic-poster {
+      width: 100%;
+      max-width: 1160px;
+      margin: 0 auto;
+      background:
+        radial-gradient(ellipse 75% 35% at 50% 12%, var(--race-accent-soft), transparent 70%),
+        linear-gradient(180deg, #151921 0%, #11141a 100%);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 1.5rem 1.75rem;
+      position: relative;
+      box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.75),
+        inset 0 0 0 1px rgba(236, 229, 213, 0.05);
+    }
+
+    /* Decorative Corner Filigree */
+    .corner-ornament {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      color: var(--gold);
+      opacity: 0.65;
+      pointer-events: none;
+    }
+    .corner-tl { top: 8px; left: 8px; }
+    .corner-tr { top: 8px; right: 8px; transform: scaleX(-1); }
+    .corner-bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
+    .corner-br { bottom: 8px; right: 8px; transform: scale(-1, -1); }
+
+    /* 1. Header */
+    .poster-header {
+      text-align: center;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      position: relative;
+    }
+
+    .preview-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: var(--teal-subtle);
+      border: 1px solid var(--teal-dim);
+      color: var(--teal);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      margin-bottom: 0.7rem;
+    }
+
+    .preview-pill svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--teal);
+      flex-shrink: 0;
+    }
+
+    .poster-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.65rem, 3.8vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 0 0 0.35rem;
+      line-height: 1.15;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+    }
+
+    .poster-tagline {
+      font-size: clamp(0.95rem, 1.9vw, 1.1rem);
+      color: var(--text-primary);
+      font-style: italic;
+      margin: 0 auto;
+      max-width: 660px;
+    }
+
+    /* 2. Race Picker Strip (10 Interactive Crest Cards) */
+    .picker-section {
+      margin-bottom: 1.25rem;
+    }
+
+    .race-tablist {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+    }
+
+    .race-tab {
+      appearance: none;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-top: 2px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 0.55rem 0.6rem;
+      text-align: left;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.45rem;
+      width: 100%;
+    }
+
+    .race-tab:hover {
+      background: var(--bg-elevated);
+      border-color: rgba(236, 229, 213, 0.25);
+    }
+
+    .race-tab[aria-selected="true"] {
+      background: linear-gradient(180deg, var(--tab-accent-soft) 0%, var(--bg-elevated) 100%);
+      border-color: var(--tab-accent);
+      border-top: 2px solid var(--tab-accent);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    }
+
+    .race-tab-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .race-tab-icon {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      color: var(--tab-accent);
+      margin-top: 0.05rem;
+    }
+
+    .race-tab-titles {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .race-tab-name {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .race-tab[aria-selected="true"] .race-tab-name {
+      color: var(--tab-accent);
+    }
+
+    .race-tab-kit {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      line-height: 1.2;
+      margin-top: 0.12rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Mini H/M/S sparkline inside each picker tab */
+    .tab-sparkbars {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+      padding-top: 2px;
+    }
+
+    .tab-spark-track {
+      height: 3px;
+      background: var(--bg-track);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .tab-spark-fill-h { height: 100%; background: var(--stat-h); }
+    .tab-spark-fill-m { height: 100%; background: var(--stat-m); }
+    .tab-spark-fill-s { height: 100%; background: var(--stat-s); }
+
+    /* 3. Infographic Detail Panel (2-Column Bento Grid on Desktop, strict 1..8 DOM order) */
+    .detail-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--race-accent-border);
+      border-top: 3px solid var(--race-accent);
+      border-radius: var(--radius-lg);
+      padding: 1.35rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      grid-template-rows: auto auto 1fr;
+      gap: 1rem 1.35rem;
+      align-items: start;
+    }
+
+    .block-1-identity { grid-column: 1; grid-row: 1; }
+    .block-2-description { grid-column: 1; grid-row: 2; }
+    .block-3-overcoming { grid-column: 1; grid-row: 3; }
+    .block-right-col {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .info-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.9rem 1.05rem;
+    }
+
+    /* 3.1 Name and kit title */
+    .detail-header {
+      display: flex;
+      align-items: center;
+      gap: 0.95rem;
+      padding: 0.85rem 1.05rem;
+      background: linear-gradient(90deg, var(--race-accent-soft) 0%, var(--bg-elevated) 85%);
+      border: 1px solid var(--race-accent-border);
+      border-radius: var(--radius-md);
+    }
+
+    .detail-emblem {
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      background: var(--bg-poster);
+      border: 1px solid var(--race-accent);
+      color: var(--race-accent);
+      padding: 0.5rem;
+      box-shadow: 0 0 16px var(--race-accent-soft);
+    }
+
+    .detail-emblem svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .detail-race-name {
+      font-family: var(--font-display);
+      font-size: clamp(1.45rem, 2.8vw, 1.95rem);
+      font-weight: 700;
+      color: var(--gold);
+      margin: 0;
+      line-height: 1.12;
+      letter-spacing: 0.05em;
+    }
+
+    .detail-kit-title {
+      font-family: var(--font-display);
+      font-size: clamp(0.95rem, 1.8vw, 1.12rem);
+      font-weight: 600;
+      color: var(--teal);
+      margin: 0.18rem 0 0;
+      letter-spacing: 0.03em;
+    }
+
+    /* 3.2 Description (Strengths + Drawback visual split) */
+    .detail-description {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .detail-description p {
+      margin: 0;
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.97rem;
+      line-height: 1.62;
+    }
+
+    .detail-description p:first-child {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--gold);
+      color: var(--text-primary);
+    }
+
+    .detail-description p:last-child {
+      background: var(--crimson-soft);
+      border: 1px solid var(--crimson-border);
+      border-left: 3px solid var(--stat-h);
+      color: var(--text-primary);
+    }
+
+    .detail-description strong {
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* 3.3 Overcoming the drawback */
+    .overcoming-card {
+      background: linear-gradient(180deg, var(--teal-subtle) 0%, var(--bg-elevated) 100%);
+      border: 1px solid var(--teal-dim);
+      border-left: 3px solid var(--teal);
+      border-radius: var(--radius-md);
+      padding: 0.9rem 1.05rem;
+    }
+
+    .card-heading {
+      font-family: var(--font-display);
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--teal);
+      margin: 0 0 0.65rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .card-heading-note {
+      font-family: var(--font-body);
+      font-size: 0.76rem;
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+      color: var(--text-secondary);
+    }
+
+    .mastery-list {
+      margin: 0;
+      padding-left: 1.15rem;
+      display: grid;
+      gap: 0.4rem;
+      font-size: 0.93rem;
+      color: var(--text-primary);
+    }
+
+    .mastery-list li {
+      line-height: 1.48;
+    }
+
+    .mastery-list li::marker {
+      color: var(--teal);
+    }
+
+    /* 3.4 Base Health / Magicka / Stamina Bars (0-140 scale) */
+    .stat-bars-group {
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: 74px 38px 1fr;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .stat-label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .stat-pip {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .pip-h { background: var(--stat-h); }
+    .pip-m { background: var(--stat-m); }
+    .pip-s { background: var(--stat-s); }
+
+    .stat-value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--gold);
+      text-align: right;
+    }
+
+    .stat-track {
+      height: 13px;
+      background: var(--bg-track);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-track-scaled::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(
+        to right,
+        transparent calc(25% - 1px),
+        rgba(236, 229, 213, 0.08) 25%,
+        transparent calc(25% + 1px),
+        transparent calc(50% - 1px),
+        rgba(236, 229, 213, 0.14) 50%,
+        transparent calc(50% + 1px),
+        transparent calc(75% - 1px),
+        rgba(236, 229, 213, 0.08) 75%,
+        transparent calc(75% + 1px)
+      );
+      pointer-events: none;
+    }
+
+    .stat-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.25s ease;
+    }
+
+    .stat-fill-health {
+      background: linear-gradient(90deg, rgba(212, 107, 107, 0.45), var(--stat-h));
+    }
+
+    .stat-fill-magicka {
+      background: linear-gradient(90deg, rgba(108, 164, 219, 0.45), var(--stat-m));
+    }
+
+    .stat-fill-stamina {
+      background: linear-gradient(90deg, rgba(110, 188, 137, 0.45), var(--stat-s));
+    }
+
+    .scale-ticks {
+      display: grid;
+      grid-template-columns: 74px 38px 1fr;
+      gap: 0.6rem;
+      margin-top: 0.25rem;
+    }
+
+    .scale-ticks-labels {
+      grid-column: 3;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 3.5 Level-up gains per attribute */
+    .levelup-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .levelup-pill {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .levelup-attr {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .levelup-val {
+      font-family: var(--font-display);
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Proportional 30-pt split bar */
+    .levelup-split-bar {
+      height: 7px;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      gap: 2px;
+      background: var(--bg-track);
+    }
+
+    .split-seg-h { background: var(--stat-h); height: 100%; transition: width 0.25s ease; }
+    .split-seg-m { background: var(--stat-m); height: 100%; transition: width 0.25s ease; }
+    .split-seg-s { background: var(--stat-s); height: 100%; transition: width 0.25s ease; }
+
+    /* 3.6 Carry weight */
+    .carry-row {
+      display: grid;
+      grid-template-columns: 74px 38px 1fr;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .carry-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--race-accent-border), var(--race-accent));
+      border-radius: 2px;
+      transition: width 0.25s ease;
+    }
+
+    /* 3.7 Base regeneration rates */
+    .regen-bars-group {
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .regen-row {
+      display: grid;
+      grid-template-columns: 74px 38px 1fr;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .regen-track {
+      height: 8px;
+      background: var(--bg-track);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .regen-fill {
+      height: 100%;
+      background: var(--race-accent);
+      border-radius: 2px;
+      transition: width 0.25s ease;
+    }
+
+    /* 3.8 Major and Minor Skills */
+    .skills-columns {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.85rem;
+    }
+
+    .skill-group-label {
+      font-family: var(--font-display);
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin: 0 0 0.45rem;
+      letter-spacing: 0.04em;
+    }
+
+    .tag-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.38rem;
+    }
+
+    .skill-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.22rem 0.6rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.83rem;
+      font-weight: 600;
+    }
+
+    .skill-tag-major {
+      background: var(--race-accent-soft);
+      border: 1px solid var(--race-accent-border);
+      color: var(--text-primary);
+    }
+
+    .skill-tag-minor {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    /* 4. Compare All Races Visual Matrix */
+    .compare-section {
+      margin-bottom: 1.35rem;
+    }
+
+    .section-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 0;
+    }
+
+    .section-hint {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    .table-wrapper {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow-x: auto;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+      min-width: 740px;
+    }
+
+    .compare-table th,
+    .compare-table td {
+      padding: 0.55rem 0.7rem;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+
+    .compare-table thead th {
+      background: var(--bg-elevated);
+      font-family: var(--font-display);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--gold);
+      border-bottom: 1px solid var(--border-strong);
+      white-space: nowrap;
+      padding: 0;
+    }
+
+    .sort-btn {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: inherit;
+      font: inherit;
+      letter-spacing: inherit;
+      text-transform: inherit;
+      cursor: pointer;
+      width: 100%;
+      padding: 0.65rem 0.7rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.3rem;
+      text-align: left;
+    }
+
+    .sort-btn:hover {
+      background: var(--bg-elevated-hover);
+      color: var(--text-primary);
+    }
+
+    .sort-indicator {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: var(--teal);
+      min-width: 0.7rem;
+      text-align: center;
+    }
+
+    .compare-table tbody tr {
+      transition: background-color 0.12s ease;
+    }
+
+    .compare-table tbody tr:hover {
+      background: var(--bg-elevated);
+    }
+
+    .compare-table tbody tr.is-active-race {
+      background: rgba(217, 184, 102, 0.09);
+    }
+
+    .compare-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .race-link-btn {
+      appearance: none;
+      background: none;
+      border: none;
+      padding: 0.1rem 0;
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--teal);
+      cursor: pointer;
+      text-align: left;
+      text-decoration: underline;
+      text-decoration-color: rgba(127, 200, 200, 0.35);
+      text-underline-offset: 3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .race-link-btn:hover {
+      color: var(--gold);
+      text-decoration-color: var(--gold);
+    }
+
+    .race-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* Inline mini-bars inside comparison table cells */
+    .matrix-stat-cell {
+      font-variant-numeric: tabular-nums;
+      min-width: 68px;
+    }
+
+    .matrix-val {
+      display: block;
+      font-weight: 600;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+
+    .matrix-mini-track {
+      height: 4px;
+      background: var(--bg-track);
+      border-radius: 2px;
+      overflow: hidden;
+      width: 52px;
+    }
+
+    .matrix-mini-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+
+    .total-badge {
+      display: inline-block;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: var(--gold);
+      background: var(--gold-subtle);
+      border: 1px solid var(--gold-dim);
+      padding: 0.1rem 0.45rem;
+      border-radius: var(--radius-sm);
+    }
+
+    /* 5. In-game settings */
+    .settings-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--teal);
+      border-radius: var(--radius-md);
+      padding: 0.95rem 1.15rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .settings-section p {
+      margin: 0.35rem 0 0;
+      color: var(--text-primary);
+      font-size: 0.92rem;
+      line-height: 1.58;
+    }
+
+    /* 6. Footer */
+    .poster-footer {
+      text-align: center;
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 0.86rem;
+    }
+
+    .poster-footer p {
+      margin: 0;
+    }
+
+    /* Responsive Breakpoints down to 360px */
+    @media (max-width: 940px) {
+      .detail-panel {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+
+      .block-1-identity,
+      .block-2-description,
+      .block-3-overcoming,
+      .block-right-col {
+        grid-column: 1;
+        grid-row: auto;
+      }
+
+      .race-tablist {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 0.5rem 0.4rem 1.5rem;
+      }
+
+      .infographic-poster {
+        padding: 1.1rem 0.85rem 1.25rem;
+      }
+
+      .detail-panel {
+        padding: 0.95rem 0.85rem;
+      }
+
+      .levelup-grid,
+      .skills-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .race-tablist {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="infographic-poster">
+    <!-- Decorative SVG Corner Ornaments -->
+    <svg class="corner-ornament corner-tl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M2 22V2H22"/><path d="M6 14V6H14"/>
+    </svg>
+    <svg class="corner-ornament corner-tr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M2 22V2H22"/><path d="M6 14V6H14"/>
+    </svg>
+    <svg class="corner-ornament corner-bl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M2 22V2H22"/><path d="M6 14V6H14"/>
+    </svg>
+    <svg class="corner-ornament corner-br" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M2 22V2H22"/><path d="M6 14V6H14"/>
+    </svg>
+
+    <!-- 1. Header -->
+    <header class="poster-header">
+      <div class="preview-pill" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>Preview of the upcoming revision; numbers may change</span>
+      </div>
+      <h1 class="poster-title">Aetherial Bloodlines</h1>
+      <p class="poster-tagline">Every race trades a strength for a weakness, and every weakness can be overcome</p>
+    </header>
+
+    <main>
+      <!-- 2. Interactive Race Picker -->
+      <section class="picker-section" aria-label="Select a race">
+        <div class="race-tablist" role="tablist" aria-label="Playable races" id="race-tablist"></div>
+      </section>
+
+      <!-- 3. Infographic Detail Panel (Strict 1..8 Order) -->
+      <section
+        id="race-detail-panel"
+        class="detail-panel"
+        role="tabpanel"
+        aria-live="polite"
+        tabindex="-1"
+      >
+        <!-- 3.1 Name and kit title -->
+        <div class="detail-header block-1-identity">
+          <div class="detail-emblem" id="detail-emblem" aria-hidden="true"></div>
+          <div>
+            <h2 class="detail-race-name" id="detail-name">Imperial</h2>
+            <p class="detail-kit-title" id="detail-kit">Legion Discipline</p>
+          </div>
+        </div>
+
+        <!-- 3.2 The description -->
+        <div class="detail-description block-2-description" id="detail-description"></div>
+
+        <!-- 3.3 Overcoming the drawback -->
+        <div class="overcoming-card block-3-overcoming">
+          <h3 class="card-heading">Overcoming the drawback</h3>
+          <ul class="mastery-list" id="detail-overcoming"></ul>
+        </div>
+
+        <!-- Right-hand Infographic Telemetry Column (Items 3.4 to 3.8 in order) -->
+        <div class="block-right-col">
+          <!-- 3.4 Stat block with base Health / Magicka / Stamina on a shared 0-140 scale -->
+          <div class="info-card">
+            <h3 class="card-heading">
+              <span>Base Health / Magicka / Stamina</span>
+              <span class="card-heading-note">0-140 scale</span>
+            </h3>
+            <div class="stat-bars-group" id="detail-base-bars"></div>
+            <div class="scale-ticks" aria-hidden="true">
+              <div class="scale-ticks-labels">
+                <span>0</span>
+                <span>35</span>
+                <span>70</span>
+                <span>105</span>
+                <span>140</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3.5 Level-up gains per attribute -->
+          <div class="info-card">
+            <h3 class="card-heading">
+              <span>Level-up gains per attribute</span>
+              <span class="card-heading-note">30 total</span>
+            </h3>
+            <div class="levelup-grid" id="detail-levelup"></div>
+            <div class="levelup-split-bar" id="detail-levelup-bar" aria-hidden="true"></div>
+          </div>
+
+          <!-- 3.6 Carry weight -->
+          <div class="info-card">
+            <h3 class="card-heading">Carry weight</h3>
+            <div class="carry-row">
+              <span class="stat-label">Carry weight</span>
+              <span class="stat-value" id="detail-carry">100</span>
+              <div class="stat-track stat-track-scaled" role="meter" aria-label="Carry weight" aria-valuemin="0" aria-valuemax="140" id="detail-carry-meter" aria-valuenow="100">
+                <div class="carry-fill" id="detail-carry-fill" style="width: 71.43%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3.7 Base regeneration rates -->
+          <div class="info-card">
+            <h3 class="card-heading">Health / Magicka / Stamina regeneration (base rate)</h3>
+            <div class="regen-bars-group" id="detail-regen-bars"></div>
+          </div>
+
+          <!-- 3.8 Major skills (+10) and minor skills (+5) -->
+          <div class="info-card">
+            <div class="skills-columns">
+              <div>
+                <h3 class="skill-group-label">Major skills (+10)</h3>
+                <ul class="tag-list" id="detail-major-skills"></ul>
+              </div>
+              <div>
+                <h3 class="skill-group-label">Minor skills (+5)</h3>
+                <ul class="tag-list" id="detail-minor-skills"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Compare all races -->
+      <section class="compare-section" aria-labelledby="compare-heading">
+        <div class="section-bar">
+          <h2 id="compare-heading" class="section-title">Compare all races</h2>
+          <span class="section-hint">Click a column header to sort, or click a race name to inspect</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="compare-table" id="compare-table">
+            <thead>
+              <tr>
+                <th scope="col" aria-sort="none" data-col="name">
+                  <button type="button" class="sort-btn" data-sort="name">
+                    <span>Race</span>
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort="none" data-col="bh">
+                  <button type="button" class="sort-btn" data-sort="bh">
+                    <span>Base H</span>
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort="none" data-col="bm">
+                  <button type="button" class="sort-btn" data-sort="bm">
+                    <span>M</span>
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort="none" data-col="bs">
+                  <button type="button" class="sort-btn" data-sort="bs">
+                    <span>S</span>
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort="none" data-col="total">
+                  <button type="button" class="sort-btn" data-sort="total">
+                    <span>Total</span>
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort="none" data-col="levelup">
+                  <button type="button" class="sort-btn" data-sort="levelup">
+                    <span>Level-up H/M/S</span>
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort="none" data-col="carry">
+                  <button type="button" class="sort-btn" data-sort="carry">
+                    <span>Carry weight</span>
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort="none" data-col="major">
+                  <button type="button" class="sort-btn" data-sort="major">
+                    <span>Major skills</span>
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="compare-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 5. In-game settings -->
+      <section class="settings-section" aria-labelledby="settings-heading">
+        <h2 id="settings-heading" class="section-title" style="font-size: 0.98rem;">In-game settings</h2>
+        <p>Everything is adjustable in game from the FLICK menu (F7), under Aetherial Bloodlines. Racial drawbacks can be switched off entirely; the racial abilities are part of the bargain those drawbacks pay for, so they switch off with them. Drawback mastery can be switched off for permanent drawbacks. The Bosmer's Green Pact can block harvesting, allow it with a penalty, or be turned off. The level-up gains for every race can be changed on their own page, and modded races can be added in the INI.</p>
+      </section>
+    </main>
+
+    <!-- 6. Footer -->
+    <footer class="poster-footer">
+      <p>Aetherial Bloodlines by Apodeictic. Requires Paths of Empyrean for the perks named above.</p>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const RACES = [
+        {
+          id: "imperial",
+          name: "Imperial",
+          kit: "Legion Discipline",
+          accent: "#d49a6a",
+          accentSoft: "rgba(212, 154, 106, 0.16)",
+          accentBorder: "rgba(212, 154, 106, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L20 12L12 22L4 12L12 2Z"/><path d="M12 6V18M8 12H16"/></svg>',
+          paragraphs: [
+            "The discipline of Cyrodiil's legions runs through your veins, honing the calm command of soldiers who hold the line and strike on the counter. While above 70% Health, you deal 15% more damage with Swords, Greatswords, Spears, and Crossbows, and while blocking you reflect 10% of incoming melee damage. Every blocked attack, shield or weapon bash, or counter-strike builds <strong>Legion Discipline</strong> (up to 5 stacks, granting +4% Block effectiveness and +4% weapon damage per stack); at 5 stacks, bashing or power attacking unleashes <strong>Commanding Riposte</strong>, restoring 50 Stamina, shattering the target's guard (-100 Armour Rating for 6 seconds), and rallying nearby allies (+15% attack damage and +50 Armour Rating for 10 seconds).",
+            "However, strict legion rationing makes Health and Stamina potions 40% less effective when used above 50% Health or Stamina, and your formation training leaves your sneak attacks 25% weaker and unmechanized bows 20% slower to draw until you train in covert warfare or field alchemy."
+          ],
+          overcoming: [
+            "Potion penalty: overcome with White Witchery or Long-Lasting.",
+            "Sneak attack penalty: overcome at Sneak 50.",
+            "Bow draw penalty: overcome at Archery 50 or with Quick Shot.",
+            "Striking an enemy mid power attack or mid spell counts as two stacks of Legion Discipline."
+          ],
+          base: { h: 110, m: 105, s: 110, total: 325 },
+          levelup: { h: 10, m: 10, s: 10 },
+          carry: 100,
+          regen: { h: "0.58", m: "1.50", s: "2.70" },
+          major: ["One-Handed", "Block", "Heavy Armour"],
+          minor: ["Speech", "Restoration", "Archery"]
+        },
+        {
+          id: "nord",
+          name: "Nord",
+          kit: "Sovngarde's Mettle",
+          accent: "#8ab8d0",
+          accentSoft: "rgba(138, 184, 208, 0.16)",
+          accentBorder: "rgba(138, 184, 208, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2V22M5 6L19 18M19 6L5 18"/><polygon points="12,5 15,12 12,19 9,12"/></svg>',
+          paragraphs: [
+            "You carry the unyielding courage of Skyrim's ancient heroes into every battle, your blood waking only once the first blow is struck. You deal 15% more damage against Elven races, your Shouts are 15% more powerful and last 15% longer, and slaying an enemy while your Voice is recovering tears one-third from the remaining cooldown (once per Shout) while boosting your power attack damage by 25% for 15 seconds. Every power attack, bash, or Shout builds <strong>Sovngarde's Mettle</strong> (up to 5 stacks, granting +4% attack damage and stagger per stack), and falling below 30% Health unleashes a once-per-battle surge that restores 250 Stamina and increases Two-Handed and Heavy power attack damage by 50% for 15 seconds.",
+            "However, until your blood is warmed by battle, you suffer 20% more physical damage while above 85% Health, passive Health Regeneration is paused above 70% Health, and your Magic Resistance is 15% lower, drawbacks you can shake off once you reach 3 stacks of Mettle or overcome permanently through armour and Thu'um mastery."
+          ],
+          overcoming: [
+            "Damage taken above 85% Health: shaken off at 3 Mettle stacks; overcome with Bulwark or Battle Rush.",
+            "Regeneration pause: lifted at 3 Mettle stacks; overcome with Conditioning or Light Matching Set (rank 2).",
+            "Magic Resistance penalty: overcome with Reflective Carapace, Elusive Zephyr or Dovahziil.",
+            "A power attack at 5 Mettle stacks makes nearby enemies falter (-15% attack damage for 4 seconds)."
+          ],
+          base: { h: 120, m: 80, s: 120, total: 320 },
+          levelup: { h: 15, m: 5, s: 10 },
+          carry: 110,
+          regen: { h: "0.60", m: "0.90", s: "3.10" },
+          major: ["Heavy Armour", "Two-Handed", "Block"],
+          minor: ["Smithing", "Lockpicking", "Archery"]
+        },
+        {
+          id: "breton",
+          name: "Breton",
+          kit: "Direnni Riposte",
+          accent: "#9e95d6",
+          accentSoft: "rgba(158, 149, 214, 0.16)",
+          accentBorder: "rgba(158, 149, 214, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="12,5 19,12 12,19 5,12"/><circle cx="12" cy="12" r="2"/></svg>',
+          paragraphs: [
+            "The Direnni Hegemony and Wyrd Covens of High Rock wove ancient counter-wards into your bloodline, blending elven spellcraft with knightly resolve. You possess 15% Magic Resistance, 10% innate Spell Absorption, 25% cheaper Conjuration spells, and your Wards absorb 50% of Magicka from incoming spells (rising to 100% with the Ward Absorb perk). Whenever you absorb a spell with a Ward, block a spell with a Shield or Weapon, or trigger your innate Spell Absorption, you gain a stack of <strong>Direnni Riposte</strong> for 6 seconds (up to 3 stacks, +8% spell and bound-weapon power per stack); at 3 stacks, your next weapon strike or offensive spell unleashes <strong>Lion's Counter-Seal</strong>, draining 40 Magicka, silencing the target for 2 seconds, and restoring 25 Magicka and Stamina to you.",
+            "However, your half-elven frame gains 20% less Armour Rating from physical armour and deals 15% less physical weapon damage while below 50% Magicka, limitations bypassed by Bound Weapons and Mage Armour or overcome through armour and spellsword mastery."
+          ],
+          overcoming: [
+            "Armour penalty: halved at Light or Heavy Armour 50; overcome with Light or Heavy Matching Set (rank 2); bypassed in robes with Mage Armour.",
+            "Weapon damage penalty: bypassed with Bound Weapons (Mystic Binding, Thirsty Blade); overcome with Weaving Dance or Conduit."
+          ],
+          base: { h: 95, m: 120, s: 95, total: 310 },
+          levelup: { h: 5, m: 15, s: 10 },
+          carry: 90,
+          regen: { h: "0.40", m: "2.35", s: "2.00" },
+          major: ["Restoration", "One-Handed", "Conjuration"],
+          minor: ["Speech", "Alchemy", "Destruction"]
+        },
+        {
+          id: "redguard",
+          name: "Redguard",
+          kit: "Ansei's Gambit and Shehai",
+          accent: "#d6895c",
+          accentSoft: "rgba(214, 137, 92, 0.16)",
+          accentBorder: "rgba(214, 137, 92, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20C9 15 15 9 20 4"/><path d="M15 4H20V9"/><path d="M6 14L10 18"/><circle cx="12" cy="12" r="3"/></svg>',
+          paragraphs: [
+            "Like the Ansei of legend, you fight with unmatched flourish, blade and footwork moving in a single breath. Wielding a One-Handed Sword (paired with another sword, a dagger, or an empty off-hand) grants a 10% chance to evade melee attacks, +15% Critical Chance, and 25% cheaper dodges. Every third blade strike or dodge within 4 seconds awakens the <strong>Shehai</strong> for 5 seconds, wreathing your strikes in spirit-fire to grant +25% Critical Chance, +15% attack damage, and causing your blades to ignore 35% of enemy armour.",
+            "However, enclosed Heavy Armour disrupts your footwork and conducts hostile magic, causing you to suffer 20% more damage from spells while wearing Heavy Armour, and the shunned schools of Conjuration and Illusion cost 25% more Magicka until mastered through dedicated study or heavy-armour conditioning."
+          ],
+          overcoming: [
+            "Spell damage in Heavy Armour: halved with Reflective Carapace; overcome with Conditioning.",
+            "Conjuration and Illusion cost: removed for each school by that school's Student perk (rank 2).",
+            "Striking an enemy mid power attack or mid spell counts as two steps toward the Shehai."
+          ],
+          base: { h: 110, m: 80, s: 120, total: 310 },
+          levelup: { h: 10, m: 5, s: 15 },
+          carry: 100,
+          regen: { h: "0.42", m: "1.15", s: "4.50" },
+          major: ["One-Handed", "Archery", "Light Armour"],
+          minor: ["Smithing", "Block", "Speech"]
+        },
+        {
+          id: "altmer",
+          name: "Altmer",
+          kit: "Aetherial Resonance",
+          accent: "#dfc168",
+          accentSoft: "rgba(223, 193, 104, 0.16)",
+          accentBorder: "rgba(223, 193, 104, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,2 16,10 22,12 16,14 12,22 8,14 2,12 8,10"/><circle cx="12" cy="12" r="2.5"/></svg>',
+          paragraphs: [
+            "The Altmer are Tamriel's foremost mages, their +100 Magicka vessel running deeper than any other bloodline and their spell power rising and falling with the fullness of their reserves (+25% spell power above 75% Magicka, +10% above 50%, and -15% below 25%). Each spell or staff cast weaves a stack of <strong>Aetherial Resonance</strong> (max 5 stacks); at 5 stacks, dual-casting a spell triggers <strong>Aetherial Convergence</strong>, supercharging that cast by +25% and refunding 40 Magicka to keep your vessel full.",
+            "However, your radiant blood acts as a lightning rod for hostile magic, reducing your Magic Resistance by 25% and causing you to suffer 20% more physical damage when drained below 25% Magicka. Maintaining an Alteration armour spell or Restoration Ward acts as an arcane <strong>Siphon</strong> that cuts both vulnerabilities in half immediately, while mastering Alteration's protective perks stabilizes your vessel permanently."
+          ],
+          overcoming: [
+            "Siphon: any active Flesh spell (Oakflesh to Ebonyflesh, or Dragonhide) or a held Ward halves both vulnerabilities.",
+            "Overcome with Magic Resistance or Aetherial Shield."
+          ],
+          base: { h: 90, m: 130, s: 90, total: 310 },
+          levelup: { h: 5, m: 20, s: 5 },
+          carry: 90,
+          regen: { h: "0.33", m: "2.80", s: "1.85" },
+          major: ["Destruction", "Enchanting", "Illusion"],
+          minor: ["Conjuration", "Alteration", "Restoration"]
+        },
+        {
+          id: "dunmer",
+          name: "Dunmer",
+          kit: "Cinder-Edge and Veloth's Pyre",
+          accent: "#d47a6a",
+          accentSoft: "rgba(212, 122, 106, 0.16)",
+          accentBorder: "rgba(212, 122, 106, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C14 7 18 9 18 14C18 17.5 15.5 20 12 20C8.5 20 6 17.5 6 14C6 9 10 7 12 3Z"/><path d="M12 11C13 13 14 14 14 16C14 17.5 13 18.5 12 18.5C11 18.5 10 17.5 10 16C10 14 11 13 12 11Z"/></svg>',
+          paragraphs: [
+            "Veloth's flame sharpens your magic when paired with the dance of steel, turning every trial into temper. Wielding a One-Handed Sword or Dagger in your right hand makes your Fire and Illusion spells 25% more powerful and 15% cheaper to cast. Striking with your blade builds <strong>Cinder-Edge</strong> (up to 3 stacks, granting +5% Fire and Illusion power per stack); casting a Fire or Illusion spell consumes those stacks to ignite your blade with <strong>Ash-Brand</strong> for 5 seconds, searing targets for up to 15 bonus Fire damage and reducing their Fire and Magic Resistance by 15%. When battle drives you below 20% Health, <strong>Veloth's Pyre</strong> answers unbidden once per fight: fire wreathes you for 20 seconds, granting +40% Fire Resistance and burning nearby foes (15 Fire damage per second), with every kill refreshing the duration and stoking the flames hotter (up to 40 damage per second).",
+            "However, your bond to flame diminishes your aptitude with Frost and Shock spells by 30% and leaves you 15% weaker to Frost damage, limitations a Dunmer mage can overcome by mastering multi-elemental Destruction."
+          ],
+          overcoming: [
+            "Halved with Elementalist, or Augmented Frost or Augmented Shock (rank 2).",
+            "Overcome with Force of Nature.",
+            "A kill while Veloth's Pyre burns makes nearby enemies falter (-15% attack damage for 4 seconds)."
+          ],
+          base: { h: 105, m: 105, s: 105, total: 315 },
+          levelup: { h: 10, m: 10, s: 10 },
+          carry: 100,
+          regen: { h: "0.45", m: "1.85", s: "2.65" },
+          major: ["Destruction", "Light Armour", "One-Handed"],
+          minor: ["Sneak", "Illusion", "Alchemy"]
+        },
+        {
+          id: "bosmer",
+          name: "Bosmer",
+          kit: "Green Pact and Mark of the Horn",
+          accent: "#84b882",
+          accentSoft: "rgba(132, 184, 130, 0.16)",
+          accentBorder: "rgba(132, 184, 130, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4C14 7 14 17 6 20"/><path d="M6 4V20"/><path d="M4 12H20"/><path d="M16 8L20 12L16 16"/></svg>',
+          paragraphs: [
+            "The Bosmer channel speed and predator instinct into deadly accuracy, binding their hunt to the <strong>Green Pact</strong>. Each consecutive arrow hit grants a stacking +5% ranged damage boost (decays out of combat, max +30% at 6 stacks) and marks your quarry with the <strong>Mark of the Horn</strong> for 6 seconds, stripping 75 Armour Rating and slowing them by 15%. Closing in on a Marked target triggers <strong>Hunter's Pounce</strong>, turning your close-quarters strikes lethal by granting +15% melee damage and spending your ranged stacks one strike at a time rather than losing them all at once.",
+            "However, against unmarked foes within arm's reach your melee strikes deal 15% less damage (or 20% less with Two-Handed weapons), a disadvantage you can bypass by marking your prey first or overcome permanently through dedicated melee mastery."
+          ],
+          overcoming: [
+            "Melee penalty: bypassed against Marked targets; halved at One-Handed or Two-Handed 50; overcome at 75.",
+            "The Green Pact: you may not harvest plants or chop wood, and eating forbidden food disables food benefits for 90 minutes. Mod list authors and players can set this to block, penalise or allow harvesting."
+          ],
+          base: { h: 100, m: 100, s: 120, total: 320 },
+          levelup: { h: 10, m: 5, s: 15 },
+          carry: 90,
+          regen: { h: "0.35", m: "1.00", s: "4.20" },
+          major: ["Archery", "Sneak", "Alchemy"],
+          minor: ["Light Armour", "Pickpocket", "Lockpicking"]
+        },
+        {
+          id: "orsimer",
+          name: "Orsimer",
+          kit: "Oath-Forged and Bloodthirst",
+          accent: "#9eb384",
+          accentSoft: "rgba(158, 179, 132, 0.16)",
+          accentBorder: "rgba(158, 179, 132, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9H20L18 14H6L4 9Z"/><path d="M8 14V19H16V14"/><path d="M6 5L9 9M18 5L15 9"/></svg>',
+          paragraphs: [
+            "Every scar tells a story of resilience, and for the Orsimer, each wound only sharpens their strength and fury. For each melee blow landed or suffered, you gain a stacking +3% melee damage boost (resets out of combat, max +30% at 10 stacks), Heavy Armour worn is 10% more effective, and your power attacks cost 15% less Stamina while wearing Heavy Armour. Those same stacks feed you: every melee blow you land returns Health in proportion to your stacks (1.5 to 6 Health per hit), and when battle drives you below 70% Health, a power attack spends the lot at once, tearing free up to 40% of your missing Health and hardening you against stagger for 5 seconds. The bloodless yield nothing, so undead, daedra, and machines cannot be drained.",
+            "However, incoming healing spells are 50% less effective and non-combat magic costs 15% more Magicka, though an Orsimer who masters the School of Restoration gradually tempers their blood to accept healing magic without penalty."
+          ],
+          overcoming: [
+            "Both penalties are halved at Restoration 50 (or with Respite or Paladin) and overcome at Restoration 75 (or with Urgency).",
+            "A power attack at 10 stacks makes nearby enemies falter (-15% attack damage for 4 seconds)."
+          ],
+          base: { h: 135, m: 60, s: 115, total: 310 },
+          levelup: { h: 20, m: 5, s: 5 },
+          carry: 120,
+          regen: { h: "0.50", m: "0.85", s: "3.80" },
+          major: ["Two-Handed", "Smithing", "Heavy Armour"],
+          minor: ["One-Handed", "Block", "Enchanting"]
+        },
+        {
+          id: "khajiit",
+          name: "Khajiit",
+          kit: "Rhythm of Jone and Jode",
+          accent: "#d1a872",
+          accentSoft: "rgba(209, 168, 114, 0.16)",
+          accentBorder: "rgba(209, 168, 114, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4A8 8 0 1 0 10 20A6 6 0 1 1 10 4Z"/><circle cx="16.5" cy="12" r="2.5"/></svg>',
+          paragraphs: [
+            "The twin moons Jone and Jode quicken your blood, their rhythm guiding claw and blade from shadow into open slaughter. Under <strong>Jone's Shadow</strong> (while sneaking), you move 15% faster, your sneak attacks deal 35% more damage, pickpocketing is 20% easier, and striking from stealth triggers a 4-second <strong>Pounce</strong> (+20% speed and 3 stacks of <strong>Lunar Rhythm</strong>). Under <strong>Jode's Fury</strong> (in open combat), every unarmed, dagger, or one-handed strike and dodge builds <strong>Lunar Rhythm</strong> (up to 5 stacks, granting +4% Critical Chance and +4% attack damage per stack) while claw and dagger strikes inflict <strong>Bleed</strong> (25 damage over 5 seconds). At 5 stacks, a power attack or roll-strike against a bleeding foe unleashes <strong>Artery Rend</strong>, dealing burst damage equal to 25% of your current Stamina, restoring 25 Stamina, and staggering the target.",
+            "However, rigid Heavy Armour compresses your fur and restricts your joints, providing 35% less Armour Rating and slowing Stamina regeneration by 25%, while unblocked enemy power attacks deal 15% more damage to your light frame until you adapt through segmented material mastery or heavy conditioning."
+          ],
+          overcoming: [
+            "Heavy Armour penalty: halved at Heavy Armour 50, or with Heavy Material Mastery while wearing Bonemold, Chitin, Nordic or Orcish heavy armour; overcome with Conditioning.",
+            "Power attack penalty: halved at Light or Heavy Armour 50; overcome with Quick Reflexes, Evasive or Bulwark.",
+            "A stealth kill or an Artery Rend kill makes nearby enemies falter (-15% attack damage for 4 seconds)."
+          ],
+          base: { h: 95, m: 90, s: 125, total: 310 },
+          levelup: { h: 10, m: 5, s: 15 },
+          carry: 90,
+          regen: { h: "0.35", m: "0.95", s: "4.00" },
+          major: ["One-Handed", "Lockpicking", "Sneak"],
+          minor: ["Archery", "Light Armour", "Pickpocket"]
+        },
+        {
+          id: "argonian",
+          name: "Argonian",
+          kit: "Hist-Sap Surge",
+          accent: "#6eb8a8",
+          accentSoft: "rgba(110, 184, 168, 0.16)",
+          accentBorder: "rgba(110, 184, 168, 0.48)",
+          svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C16 6 19 10 12 22C5 10 8 6 12 2Z"/><path d="M12 6V19M9 11L12 14L15 11"/></svg>',
+          paragraphs: [
+            "The Hist's ancient roots bind your spirit to the living world, adapting your body to marsh, venom, and survival. While swimming or fighting in the rain, you move 20% faster and regenerate Stamina and Health 25% faster, and consuming any beneficial potion immediately restores 30 Health. Applying poison, casting a Poison, Disease, or Restoration spell, or striking from a flank builds <strong>Hist-Sap Surge</strong> (up to 4 stacks, granting +5% Poison, Disease, and Restoration potency and +2 Health and Stamina per second per stack); at 4 stacks, your next power attack, bash, or spell coats the target in <strong>Corrosive Venom</strong> for 6 seconds, stripping 20% Poison and Physical Resistance and dealing 5 Poison damage per second. When driven below 30% Health, the Hist purges all poisons and diseases from your blood, triples your Health Regeneration, and makes all healing received 30% stronger.",
+            "However, your cold-blooded physiology makes you 25% weaker to Frost damage and reduces Stamina potion effectiveness by 30%, limitations overcome through alchemical mastery and insulated armour conditioning."
+          ],
+          overcoming: [
+            "Frost weakness: halved with Light or Heavy Material Mastery, or Aurora Shield; overcome with Light Matching Set (rank 2) or Conditioning.",
+            "Stamina potion penalty: overcome with Long-Lasting."
+          ],
+          base: { h: 105, m: 90, s: 120, total: 315 },
+          levelup: { h: 10, m: 5, s: 15 },
+          carry: 100,
+          regen: { h: "0.62", m: "1.45", s: "2.40" },
+          major: ["Light Armour", "Alchemy", "Restoration"],
+          minor: ["Lockpicking", "Sneak", "Alteration"]
+        }
+      ];
+
+      const BASE_SCALE_MAX = 140;
+      const REGEN_SCALE_MAX = 4.50;
+
+      let activeRaceId = "imperial";
+      let sortState = { col: null, dir: "asc" };
+
+      const tablistEl = document.getElementById("race-tablist");
+      const panelEl = document.getElementById("race-detail-panel");
+      const emblemEl = document.getElementById("detail-emblem");
+      const nameEl = document.getElementById("detail-name");
+      const kitEl = document.getElementById("detail-kit");
+      const descEl = document.getElementById("detail-description");
+      const overcomingEl = document.getElementById("detail-overcoming");
+      const baseBarsEl = document.getElementById("detail-base-bars");
+      const levelupEl = document.getElementById("detail-levelup");
+      const levelupBarEl = document.getElementById("detail-levelup-bar");
+      const carryEl = document.getElementById("detail-carry");
+      const carryMeterEl = document.getElementById("detail-carry-meter");
+      const carryFillEl = document.getElementById("detail-carry-fill");
+      const regenBarsEl = document.getElementById("detail-regen-bars");
+      const majorSkillsEl = document.getElementById("detail-major-skills");
+      const minorSkillsEl = document.getElementById("detail-minor-skills");
+      const compareTbodyEl = document.getElementById("compare-tbody");
+
+      function buildTabs() {
+        tablistEl.innerHTML = "";
+        RACES.forEach((race, index) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.role = "tab";
+          btn.id = "tab-" + race.id;
+          btn.className = "race-tab";
+          btn.dataset.raceId = race.id;
+          btn.dataset.index = String(index);
+          btn.setAttribute("aria-controls", "race-detail-panel");
+          btn.setAttribute("aria-selected", race.id === activeRaceId ? "true" : "false");
+          btn.style.setProperty("--tab-accent", race.accent);
+          btn.style.setProperty("--tab-accent-soft", race.accentSoft);
+
+          const hPct = ((race.base.h / BASE_SCALE_MAX) * 100).toFixed(1);
+          const mPct = ((race.base.m / BASE_SCALE_MAX) * 100).toFixed(1);
+          const sPct = ((race.base.s / BASE_SCALE_MAX) * 100).toFixed(1);
+
+          btn.innerHTML =
+            '<div class="race-tab-top">' +
+              '<span class="race-tab-icon" aria-hidden="true">' + race.svg + '</span>' +
+              '<span class="race-tab-titles">' +
+                '<span class="race-tab-name">' + race.name + '</span>' +
+                '<span class="race-tab-kit">' + race.kit + '</span>' +
+              '</span>' +
+            '</div>' +
+            '<div class="tab-sparkbars" aria-hidden="true">' +
+              '<div class="tab-spark-track"><div class="tab-spark-fill-h" style="width:' + hPct + '%"></div></div>' +
+              '<div class="tab-spark-track"><div class="tab-spark-fill-m" style="width:' + mPct + '%"></div></div>' +
+              '<div class="tab-spark-track"><div class="tab-spark-fill-s" style="width:' + sPct + '%"></div></div>' +
+            '</div>';
+
+          btn.addEventListener("click", () => {
+            selectRace(race.id, true);
+          });
+
+          btn.addEventListener("keydown", (e) => {
+            const count = RACES.length;
+            let targetIndex = null;
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+              targetIndex = (index + 1) % count;
+            } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+              targetIndex = (index - 1 + count) % count;
+            } else if (e.key === "Home") {
+              targetIndex = 0;
+            } else if (e.key === "End") {
+              targetIndex = count - 1;
+            }
+
+            if (targetIndex !== null) {
+              e.preventDefault();
+              const nextRace = RACES[targetIndex];
+              selectRace(nextRace.id, true);
+              const nextBtn = document.getElementById("tab-" + nextRace.id);
+              if (nextBtn) nextBtn.focus();
+            } else if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              selectRace(race.id, true);
+            }
+          });
+
+          tablistEl.appendChild(btn);
+        });
+      }
+
+      function renderDetailPanel(race) {
+        document.documentElement.style.setProperty("--race-accent", race.accent);
+        document.documentElement.style.setProperty("--race-accent-soft", race.accentSoft);
+        document.documentElement.style.setProperty("--race-accent-border", race.accentBorder);
+
+        panelEl.setAttribute("aria-labelledby", "tab-" + race.id);
+        emblemEl.innerHTML = race.svg;
+        nameEl.textContent = race.name;
+        kitEl.textContent = race.kit;
+
+        descEl.innerHTML = race.paragraphs.map(p => "<p>" + p + "</p>").join("");
+
+        overcomingEl.innerHTML = race.overcoming
+          .map(line => "<li>" + line + "</li>")
+          .join("");
+
+        const baseAttrs = [
+          { label: "Health", val: race.base.h, cls: "stat-fill-health", pip: "pip-h" },
+          { label: "Magicka", val: race.base.m, cls: "stat-fill-magicka", pip: "pip-m" },
+          { label: "Stamina", val: race.base.s, cls: "stat-fill-stamina", pip: "pip-s" }
+        ];
+
+        baseBarsEl.innerHTML = baseAttrs.map(attr => {
+          const pct = Math.min(100, (attr.val / BASE_SCALE_MAX) * 100).toFixed(2);
+          return (
+            '<div class="stat-row">' +
+              '<span class="stat-label"><span class="stat-pip ' + attr.pip + '" aria-hidden="true"></span>' + attr.label + '</span>' +
+              '<span class="stat-value">' + attr.val + '</span>' +
+              '<div class="stat-track stat-track-scaled" role="meter" aria-label="Base ' + attr.label + '" aria-valuemin="0" aria-valuemax="140" aria-valuenow="' + attr.val + '">' +
+                '<div class="stat-fill ' + attr.cls + '" style="width: ' + pct + '%;"></div>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join("");
+
+        const lvlAttrs = [
+          { label: "Health", val: race.levelup.h, pip: "pip-h" },
+          { label: "Magicka", val: race.levelup.m, pip: "pip-m" },
+          { label: "Stamina", val: race.levelup.s, pip: "pip-s" }
+        ];
+
+        levelupEl.innerHTML = lvlAttrs.map(attr => (
+          '<div class="levelup-pill">' +
+            '<span class="levelup-attr"><span class="stat-pip ' + attr.pip + '" aria-hidden="true"></span>' + attr.label + '</span>' +
+            '<span class="levelup-val">' + attr.val + '</span>' +
+          '</div>'
+        )).join("");
+
+        levelupBarEl.innerHTML =
+          '<div class="split-seg-h" style="width:' + ((race.levelup.h / 30) * 100).toFixed(2) + '%"></div>' +
+          '<div class="split-seg-m" style="width:' + ((race.levelup.m / 30) * 100).toFixed(2) + '%"></div>' +
+          '<div class="split-seg-s" style="width:' + ((race.levelup.s / 30) * 100).toFixed(2) + '%"></div>';
+
+        carryEl.textContent = String(race.carry);
+        carryMeterEl.setAttribute("aria-valuenow", String(race.carry));
+        carryFillEl.style.width = ((race.carry / BASE_SCALE_MAX) * 100).toFixed(2) + "%";
+
+        const regenAttrs = [
+          { label: "Health", raw: race.regen.h, pip: "pip-h" },
+          { label: "Magicka", raw: race.regen.m, pip: "pip-m" },
+          { label: "Stamina", raw: race.regen.s, pip: "pip-s" }
+        ];
+
+        regenBarsEl.innerHTML = regenAttrs.map(attr => {
+          const num = parseFloat(attr.raw);
+          const pct = Math.min(100, (num / REGEN_SCALE_MAX) * 100).toFixed(2);
+          return (
+            '<div class="regen-row">' +
+              '<span class="stat-label"><span class="stat-pip ' + attr.pip + '" aria-hidden="true"></span>' + attr.label + '</span>' +
+              '<span class="stat-value">' + attr.raw + '</span>' +
+              '<div class="regen-track" role="meter" aria-label="' + attr.label + ' regeneration (base rate)" aria-valuemin="0" aria-valuemax="4.5" aria-valuenow="' + num + '">' +
+                '<div class="regen-fill" style="width: ' + pct + '%;"></div>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join("");
+
+        majorSkillsEl.innerHTML = race.major
+          .map(s => '<li class="skill-tag skill-tag-major">' + s + '</li>')
+          .join("");
+
+        minorSkillsEl.innerHTML = race.minor
+          .map(s => '<li class="skill-tag skill-tag-minor">' + s + '</li>')
+          .join("");
+      }
+
+      function selectRace(raceId, updateHash) {
+        const found = RACES.find(r => r.id === raceId);
+        if (!found) return;
+        activeRaceId = found.id;
+
+        const tabs = tablistEl.querySelectorAll(".race-tab");
+        tabs.forEach(tab => {
+          const isSelected = tab.dataset.raceId === activeRaceId;
+          tab.setAttribute("aria-selected", isSelected ? "true" : "false");
+        });
+
+        renderDetailPanel(found);
+        renderTable();
+
+        if (updateHash) {
+          if (window.location.hash !== "#" + activeRaceId) {
+            try {
+              history.replaceState(null, "", "#" + activeRaceId);
+            } catch (err) {
+              window.location.hash = activeRaceId;
+            }
+          }
+        }
+      }
+
+      function getSortedRaces() {
+        const list = RACES.slice();
+        if (!sortState.col) return list;
+
+        const dirFactor = sortState.dir === "asc" ? 1 : -1;
+        list.sort((a, b) => {
+          let valA, valB;
+          switch (sortState.col) {
+            case "name":
+              return a.name.localeCompare(b.name) * dirFactor;
+            case "bh":
+              valA = a.base.h; valB = b.base.h; break;
+            case "bm":
+              valA = a.base.m; valB = b.base.m; break;
+            case "bs":
+              valA = a.base.s; valB = b.base.s; break;
+            case "total":
+              valA = a.base.total; valB = b.base.total; break;
+            case "levelup":
+              valA = a.levelup.h * 10000 + a.levelup.m * 100 + a.levelup.s;
+              valB = b.levelup.h * 10000 + b.levelup.m * 100 + b.levelup.s;
+              break;
+            case "carry":
+              valA = a.carry; valB = b.carry; break;
+            case "major":
+              return a.major.join(", ").localeCompare(b.major.join(", ")) * dirFactor;
+            default:
+              return 0;
+          }
+          if (valA !== valB) {
+            return (valA - valB) * dirFactor;
+          }
+          return a.name.localeCompare(b.name);
+        });
+        return list;
+      }
+
+      function makeStatCell(val, colorHex) {
+        const td = document.createElement("td");
+        td.className = "matrix-stat-cell";
+        const pct = Math.min(100, (val / BASE_SCALE_MAX) * 100).toFixed(1);
+        td.innerHTML =
+          '<span class="matrix-val">' + val + '</span>' +
+          '<div class="matrix-mini-track" aria-hidden="true">' +
+            '<div class="matrix-mini-fill" style="width:' + pct + '%;background:' + colorHex + ';"></div>' +
+          '</div>';
+        return td;
+      }
+
+      function renderTable() {
+        const rows = getSortedRaces();
+        compareTbodyEl.innerHTML = "";
+
+        rows.forEach(race => {
+          const tr = document.createElement("tr");
+          if (race.id === activeRaceId) {
+            tr.className = "is-active-race";
+          }
+
+          const tdName = document.createElement("td");
+          const raceBtn = document.createElement("button");
+          raceBtn.type = "button";
+          raceBtn.className = "race-link-btn";
+          raceBtn.innerHTML =
+            '<span class="race-dot" style="background:' + race.accent + ';" aria-hidden="true"></span>' +
+            '<span>' + race.name + '</span>';
+          raceBtn.addEventListener("click", () => {
+            selectRace(race.id, true);
+            panelEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            panelEl.focus({ preventScroll: true });
+          });
+          tdName.appendChild(raceBtn);
+
+          const tdBh = makeStatCell(race.base.h, "var(--stat-h)");
+          const tdBm = makeStatCell(race.base.m, "var(--stat-m)");
+          const tdBs = makeStatCell(race.base.s, "var(--stat-s)");
+
+          const tdTotal = document.createElement("td");
+          tdTotal.innerHTML = '<span class="total-badge">' + race.base.total + '</span>';
+
+          const tdLvl = document.createElement("td");
+          tdLvl.className = "matrix-stat-cell";
+          tdLvl.textContent = race.levelup.h + " / " + race.levelup.m + " / " + race.levelup.s;
+
+          const tdCarry = makeStatCell(race.carry, race.accent);
+
+          const tdMajor = document.createElement("td");
+          tdMajor.textContent = race.major.join(", ");
+
+          tr.appendChild(tdName);
+          tr.appendChild(tdBh);
+          tr.appendChild(tdBm);
+          tr.appendChild(tdBs);
+          tr.appendChild(tdTotal);
+          tr.appendChild(tdLvl);
+          tr.appendChild(tdCarry);
+          tr.appendChild(tdMajor);
+
+          compareTbodyEl.appendChild(tr);
+        });
+
+        const ths = document.querySelectorAll("#compare-table thead th");
+        ths.forEach(th => {
+          const col = th.dataset.col;
+          const indicator = th.querySelector(".sort-indicator");
+          if (col === sortState.col) {
+            th.setAttribute("aria-sort", sortState.dir === "asc" ? "ascending" : "descending");
+            if (indicator) indicator.textContent = sortState.dir === "asc" ? "▲" : "▼";
+          } else {
+            th.setAttribute("aria-sort", "none");
+            if (indicator) indicator.textContent = "";
+          }
+        });
+      }
+
+      function setupSorting() {
+        const sortBtns = document.querySelectorAll("#compare-table .sort-btn");
+        sortBtns.forEach(btn => {
+          btn.addEventListener("click", () => {
+            const col = btn.dataset.sort;
+            if (sortState.col === col) {
+              sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
+            } else {
+              sortState.col = col;
+              sortState.dir = (col === "name" || col === "major") ? "asc" : "desc";
+            }
+            renderTable();
+          });
+        });
+      }
+
+      function readHashAndSelect() {
+        const rawHash = window.location.hash.replace(/^#/, "").trim().toLowerCase();
+        const matched = RACES.find(r => r.id === rawHash);
+        if (matched) {
+          selectRace(matched.id, false);
+        } else {
+          selectRace("imperial", true);
+        }
+      }
+
+      buildTabs();
+      setupSorting();
+      readHashAndSelect();
+
+      window.addEventListener("hashchange", () => {
+        const rawHash = window.location.hash.replace(/^#/, "").trim().toLowerCase();
+        const matched = RACES.find(r => r.id === rawHash);
+        if (matched && matched.id !== activeRaceId) {
+          selectRace(matched.id, false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
