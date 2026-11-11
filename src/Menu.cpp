@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <format>
+#include <functional>
 #include <iterator>
 #include <memory>
 #include <mutex>
@@ -59,10 +60,11 @@ namespace
     RE::TESGlobal* g_thuumMelee{ nullptr };
     RE::TESGlobal* g_thuumPower{ nullptr };
 
+    // FLICK draws on its own thread, so anything a page writes and the game reads is atomic
     std::atomic<bool> g_drawbackMastery{ true };
-    float g_pyreHealth{ PYRE_HEALTH_FALLBACK };
-    float g_thuumCooldown{ THUUM_CUT_FALLBACK };
-    float g_bloodthirst{ BLOODTHIRST_FALLBACK };
+    std::atomic<float> g_pyreHealth{ PYRE_HEALTH_FALLBACK };
+    std::atomic<float> g_thuumCooldown{ THUUM_CUT_FALLBACK };
+    std::atomic<float> g_bloodthirst{ BLOODTHIRST_FALLBACK };
 
     int g_orcOverride{ 0 };
     int g_bosmerOverride{ 0 };
@@ -261,9 +263,12 @@ namespace
         bool drawbacksOn{ true };
         bool masteryOn{ true };
         std::vector<CardLine> lines;
+        std::string crosshair;
+        bool precisionDriving{ false };
+        float bloodthirstDamageShare{ 0.0f };
     };
 
-    // Every perk, skill and active effect read happens in a game task, so it never matters which thread FLICK draws on
+    // FLICK draws on its own thread, so the pages read the game only through this copy, which a game task builds
     std::mutex g_cardLock;
     std::shared_ptr<const Card> g_card;
     std::atomic<bool> g_cardQueued{ false };
@@ -278,48 +283,107 @@ namespace
         return a_global && a_global->value != 0.0f;
     }
 
-    // The global is the live value, the INI is what the next new game starts from, so a change has to reach both
-    void Apply(RE::TESGlobal* a_global, float a_value)
+    // Anything that changes the game goes through a game task, never straight from Draw
+    void RunOnGame(std::function<void()> a_fn)
     {
-        if (a_global) {
-            a_global->value = a_value;
+        if (const auto* tasks = SKSE::GetTaskInterface()) {
+            tasks->AddTask(std::move(a_fn));
         }
     }
 
-    void Commit(RE::TESGlobal* a_global, std::string_view a_name, std::string_view a_iniKey, float a_value)
+    // A switch kept in a global.
+    // The game owns the global, so a page shows what the last card task read.
+    // While a change is still queued the card task leaves the shown value alone, so the box never flicks back.
+    struct SwitchView
     {
-        Apply(a_global, a_value);
-        logger::info("Menu: {} = {}", a_name, a_value);
-        Settings::SaveSetting(a_iniKey, a_value);
+        std::atomic<float> shown{ 0.0f };
+        int pending{ 0 };
+    };
+
+    SwitchView g_negativesView;
+    SwitchView g_masteryView;
+    SwitchView g_meleeView;
+    SwitchView g_powerView;
+
+    // Held for the check and the store together, or a click landing between them would be overwritten with the old value
+    std::mutex g_switchLock;
+
+    void Refresh(SwitchView& a_view, float a_value)
+    {
+        std::scoped_lock lock(g_switchLock);
+        if (a_view.pending == 0) {
+            a_view.shown.store(a_value);
+        }
+    }
+
+    // The global is the live value, the INI is what the next new game starts from, so a change has to reach both
+    void Post(RE::TESGlobal* a_global, SwitchView& a_view, std::string_view a_name, std::string_view a_iniKey, float a_value)
+    {
+        const auto* tasks = SKSE::GetTaskInterface();
+        if (!tasks) {
+            return;
+        }
+        {
+            std::scoped_lock lock(g_switchLock);
+            a_view.shown.store(a_value);
+            ++a_view.pending;
+        }
+        tasks->AddTask([a_global, &a_view, a_name, a_iniKey, a_value]() {
+            if (a_global) {
+                a_global->value = a_value;
+            }
+            logger::info("Menu: {} = {}", a_name, a_value);
+            Settings::SaveSetting(a_iniKey, a_value);
+            std::scoped_lock lock(g_switchLock);
+            --a_view.pending;
+        });
     }
 
     // Applies the value while you drag so you see it change, and only writes the INI once you let go
-    void SliderSettingLocal(const char* a_label, float* a_value, std::string_view a_iniKey, float a_min,
+    void SliderSettingLocal(const char* a_label, std::atomic<float>& a_value, std::string_view a_iniKey, float a_min,
                             float a_max, const char* a_format, const char* a_tooltip)
     {
-        float value = std::clamp(*a_value, a_min, a_max);
+        float value = std::clamp(a_value.load(), a_min, a_max);
         if (FUCK::SliderFloat(a_label, &value, a_min, a_max, a_format)) {
-            *a_value = std::clamp(value, a_min, a_max);
+            a_value.store(std::clamp(value, a_min, a_max));
         }
         if (a_tooltip && *a_tooltip) {
             FUCK::SetTooltip(a_tooltip);
         }
         if (FUCK::IsItemDeactivatedAfterEdit()) {
-            logger::info("Menu: {} = {}", a_iniKey, *a_value);
-            Settings::SaveSetting(a_iniKey, *a_value);
+            const float saved = a_value.load();
+            logger::info("Menu: {} = {}", a_iniKey, saved);
+            Settings::SaveSetting(a_iniKey, saved);
+        }
+    }
+
+    void SliderSettingInt(const char* a_label, std::atomic<std::int32_t>& a_value, std::string_view a_iniKey, int a_min,
+                          int a_max, const char* a_tooltip)
+    {
+        int value = std::clamp(static_cast<int>(a_value.load()), a_min, a_max);
+        if (FUCK::SliderInt(a_label, &value, a_min, a_max, "%d")) {
+            a_value.store(std::clamp(value, a_min, a_max));
+        }
+        if (a_tooltip && *a_tooltip) {
+            FUCK::SetTooltip(a_tooltip);
+        }
+        if (FUCK::IsItemDeactivatedAfterEdit()) {
+            const auto saved = a_value.load();
+            logger::info("Menu: {} = {}", a_iniKey, saved);
+            Settings::SaveSetting(a_iniKey, static_cast<float>(saved));
         }
     }
 
     // Mod Attack Damage already covers power attacks, so ticking one clears the other
-    void ExclusiveCheckbox(const char* a_label, RE::TESGlobal* a_global, std::string_view a_name,
-                           std::string_view a_iniKey, RE::TESGlobal* a_other, std::string_view a_otherName,
-                           std::string_view a_otherIniKey, const char* a_tooltip)
+    void ExclusiveCheckbox(const char* a_label, RE::TESGlobal* a_global, SwitchView& a_view, std::string_view a_name,
+                           std::string_view a_iniKey, RE::TESGlobal* a_other, SwitchView& a_otherView,
+                           std::string_view a_otherName, std::string_view a_otherIniKey, const char* a_tooltip)
     {
-        bool on = GlobalIsOn(a_global);
+        bool on = a_view.shown.load() != 0.0f;
         if (FUCK::Checkbox(a_label, &on)) {
-            Commit(a_global, a_name, a_iniKey, on ? 1.0f : 0.0f);
-            if (on && GlobalIsOn(a_other)) {
-                Commit(a_other, a_otherName, a_otherIniKey, 0.0f);
+            Post(a_global, a_view, a_name, a_iniKey, on ? 1.0f : 0.0f);
+            if (on && a_otherView.shown.load() != 0.0f) {
+                Post(a_other, a_otherView, a_otherName, a_otherIniKey, 0.0f);
             }
         }
         if (a_tooltip && *a_tooltip) {
@@ -527,6 +591,17 @@ namespace
         Card card;
         card.drawbacksOn = Menu::RacialNegativesEnabled();
         card.masteryOn = Menu::DrawbackMasteryEnabled();
+        card.precisionDriving = Racials::PrecisionDriving();
+        card.bloodthirstDamageShare = Racials::BloodthirstDamageShare();
+        card.snap = Racials::GetSnapshot();
+
+        RE::TESObjectREFR* target = nullptr;
+        if (auto* pick = RE::CrosshairPickData::GetSingleton()) {
+            if (auto ref = pick->GetActiveTarget().get()) {
+                target = ref.get();
+            }
+        }
+        card.crosshair = GreenPact::DescribeTarget(target);
 
         auto* player = RE::PlayerCharacter::GetSingleton();
         if (!player) {
@@ -553,7 +628,6 @@ namespace
             }
         }
 
-        card.snap = Racials::GetSnapshot();
         card.shehaiActive = Racials::ShehaiActive();
 
         const auto spec = std::ranges::find(RACE_SPECS, baseRace, &RaceSpec::raceEditorID);
@@ -584,6 +658,10 @@ namespace
         g_cardQueued.store(true);
         lastRequest = now;
         tasks->AddTask([]() {
+            Refresh(g_negativesView, Menu::RacialNegativesEnabled() ? 1.0f : 0.0f);
+            Refresh(g_masteryView, Menu::DrawbackMasteryEnabled() ? 1.0f : 0.0f);
+            Refresh(g_meleeView, g_thuumMelee ? g_thuumMelee->value : 0.0f);
+            Refresh(g_powerView, g_thuumPower ? g_thuumPower->value : 0.0f);
             auto card = std::make_shared<const Card>(BuildCard());
             {
                 std::scoped_lock lock(g_cardLock);
@@ -596,6 +674,13 @@ namespace
             }
             g_cardQueued.store(false);
         });
+    }
+
+    [[nodiscard]] std::shared_ptr<const Card> LatestCard()
+    {
+        RequestCard();
+        std::scoped_lock lock(g_cardLock);
+        return g_card;
     }
 
     void DrawDrawbackCard(const Card& a_card)
@@ -640,14 +725,7 @@ namespace
 
         void Draw() override
         {
-            RequestCard();
-
-            std::shared_ptr<const Card> shared;
-            {
-                std::scoped_lock lock(g_cardLock);
-                shared = g_card;
-            }
-
+            const auto shared = LatestCard();
             if (!shared) {
                 FUCK::TextDisabled("%s", "Reading your character...");
                 return;
@@ -681,8 +759,7 @@ namespace
                 FUCK::Text("Green Pact Oath (Bosmer): %d / 6", snap.bosmerStacks);
             }
 
-            const auto& shehai = Racials::Shehai();
-            FUCK::Text("Shehai (Redguard): %d / %d blows%s", snap.shehaiCount, shehai.hits,
+            FUCK::Text("Shehai (Redguard): %d / %d blows%s", snap.shehaiCount, Racials::Shehai().hits.load(),
                        card.shehaiActive ? " [Shehai Active]" : "");
             FUCK::Text("Veloth's Pyre (Dunmer): Tier %d / 3 (%s)", snap.pyreTier,
                        snap.pyreUsedThisFight ? "Spent this fight" : "Ready");
@@ -701,6 +778,12 @@ namespace
 
         void Draw() override
         {
+            const auto card = LatestCard();
+            if (!card) {
+                FUCK::TextDisabled("%s", "Reading your settings...");
+                return;
+            }
+
             FUCK::SeparatorText("Drawback System");
 
             if (!g_racialNegatives) {
@@ -708,9 +791,9 @@ namespace
                 return;
             }
 
-            bool enabled = GlobalIsOn(g_racialNegatives);
+            bool enabled = g_negativesView.shown.load() != 0.0f;
             if (FUCK::Checkbox("Racial Drawbacks", &enabled)) {
-                Commit(g_racialNegatives, GLOBAL_RACIAL_NEGATIVES, "RacialDrawbacks", enabled ? 1.0f : 0.0f);
+                Post(g_racialNegatives, g_negativesView, GLOBAL_RACIAL_NEGATIVES, "RacialDrawbacks", enabled ? 1.0f : 0.0f);
             }
             FUCK::SetTooltip(
                 "Every race trades a strength for a weakness: elemental weaknesses, weaker healing,\n"
@@ -718,10 +801,10 @@ namespace
                 "Toggle this to keep every racial strength and disable the negatives.\n"
                 "Takes effect immediately.");
 
-            bool mastery = Menu::DrawbackMasteryEnabled();
+            bool mastery = g_masteryView.shown.load() != 0.0f;
             if (FUCK::Checkbox("Drawback Mastery Progression", &mastery)) {
                 g_drawbackMastery = mastery;
-                Commit(g_drawbackMasteryGlobal, GLOBAL_DRAWBACK_MASTERY, "DrawbackMastery", mastery ? 1.0f : 0.0f);
+                Post(g_drawbackMasteryGlobal, g_masteryView, GLOBAL_DRAWBACK_MASTERY, "DrawbackMastery", mastery ? 1.0f : 0.0f);
             }
             FUCK::SetTooltip(
                 "Lets the skills and perks named for each drawback halve it and then remove it.\n"
@@ -748,23 +831,23 @@ namespace
             FUCK::BeginDisabled(!enabled);
 
             FUCK::SeparatorText("Dunmer");
-            SliderSettingLocal("Veloth's Pyre", &g_pyreHealth, "PyreHealth", 0.0f,
+            SliderSettingLocal("Veloth's Pyre", g_pyreHealth, "PyreHealth", 0.0f,
                                static_cast<float>(PYRE_HEALTH_MAX), "%.0f%% health",
                                "Health a Dunmer must drop to before Veloth's Pyre fires, once per fight.\n"
                                "Set to 0 to disable.");
 
             FUCK::SeparatorText("Nord");
-            SliderSettingLocal("Thu'um Rekindled", &g_thuumCooldown, "ThuumCooldown", 0.0f,
+            SliderSettingLocal("Thu'um Rekindled", g_thuumCooldown, "ThuumCooldown", 0.0f,
                                static_cast<float>(THUUM_CUT_MAX), "%.0f%% off",
                                "Share of the remaining shout cooldown a Nord's kill removes, once per shout.\n"
                                "Set to 0 to disable.");
 
-            ExclusiveCheckbox("Melee & Power Attacks", g_thuumMelee, GLOBAL_THUUM_MELEE, "ThuumMelee",
-                              g_thuumPower, GLOBAL_THUUM_POWER, "ThuumPower",
+            ExclusiveCheckbox("Melee & Power Attacks", g_thuumMelee, g_meleeView, GLOBAL_THUUM_MELEE, "ThuumMelee",
+                              g_thuumPower, g_powerView, GLOBAL_THUUM_POWER, "ThuumPower",
                               "Enables the Thu'um Rekindled bonus for both melee and power attacks.");
 
-            ExclusiveCheckbox("Power Attacks Only", g_thuumPower, GLOBAL_THUUM_POWER, "ThuumPower",
-                              g_thuumMelee, GLOBAL_THUUM_MELEE, "ThuumMelee",
+            ExclusiveCheckbox("Power Attacks Only", g_thuumPower, g_powerView, GLOBAL_THUUM_POWER, "ThuumPower",
+                              g_thuumMelee, g_meleeView, GLOBAL_THUUM_MELEE, "ThuumMelee",
                               "Enables the Thu'um Rekindled bonus for power attacks only.\n"
                               "Turning one of these on turns the other off so the two never multiply.");
 
@@ -773,61 +856,59 @@ namespace
             }
 
             FUCK::SeparatorText("Orsimer");
-            SliderSettingLocal("Bloodthirst", &g_bloodthirst, "Bloodthirst", 0.0f, BLOODTHIRST_MAX,
+            SliderSettingLocal("Bloodthirst", g_bloodthirst, "Bloodthirst", 0.0f, BLOODTHIRST_MAX,
                                "%.1f%% a hit",
                                "Health an Orsimer's melee hit returns at ten Oath-Forged stacks.\n"
                                "With Precision installed this is a share of the blow's damage; without it, a share of max health.\n"
                                "Set to 0 to disable.");
 
-            if (Racials::PrecisionDriving()) {
+            if (card->precisionDriving) {
                 FUCK::TextDisabled("  Precision found: returns %.0f%% of a blow's damage at ten stacks.",
-                                   Racials::BloodthirstDamageShare() * 100.0f);
+                                   card->bloodthirstDamageShare * 100.0f);
             } else {
                 FUCK::TextDisabled("  Precision not found: returns a share of max health instead.");
             }
 
             FUCK::SeparatorText("Redguard");
             auto& shehai = Racials::Shehai();
-            float hits = static_cast<float>(shehai.hits);
-            SliderSettingLocal("Shehai blows", &hits, "ShehaiHits", 2.0f, 6.0f, "%.0f",
-                               "Blows on one target, while dual wielding, that summon the Shehai.");
-            shehai.hits = static_cast<std::int32_t>(hits);
+            SliderSettingInt("Shehai blows", shehai.hits, "ShehaiHits", 2, 6,
+                             "Blows on one target, while dual wielding, that summon the Shehai.");
 
-            SliderSettingLocal("Shehai window", &shehai.window, "ShehaiWindow", 1.0f, 10.0f, "%.1f s",
+            SliderSettingLocal("Shehai window", shehai.window, "ShehaiWindow", 1.0f, 10.0f, "%.1f s",
                                "How long you have to land them before the combo count resets.");
 
-            SliderSettingLocal("Shehai blow gap", &shehai.gap, "ShehaiGap", 0.0f, 1.0f, "%.2f s",
+            SliderSettingLocal("Shehai blow gap", shehai.gap, "ShehaiGap", 0.0f, 1.0f, "%.2f s",
                                "Shortest gap between two blows that both count, so a single dual-wield swing does not count twice.");
 
             FUCK::EndDisabled();
 
             FUCK::Spacing();
             if (FUCK::Button("Reset to Defaults")) {
-                Commit(g_racialNegatives, GLOBAL_RACIAL_NEGATIVES, "RacialDrawbacks", 1.0f);
+                Post(g_racialNegatives, g_negativesView, GLOBAL_RACIAL_NEGATIVES, "RacialDrawbacks", 1.0f);
                 g_drawbackMastery = true;
-                Commit(g_drawbackMasteryGlobal, GLOBAL_DRAWBACK_MASTERY, "DrawbackMastery", 1.0f);
+                Post(g_drawbackMasteryGlobal, g_masteryView, GLOBAL_DRAWBACK_MASTERY, "DrawbackMastery", 1.0f);
                 GreenPact::SetMode(GreenPact::Mode::kBlock);
                 Settings::SaveSetting("GreenPactMode", 0.0f);
 
                 g_pyreHealth = PYRE_HEALTH_SHIPPED;
-                Settings::SaveSetting("PyreHealth", g_pyreHealth);
+                Settings::SaveSetting("PyreHealth", PYRE_HEALTH_SHIPPED);
 
                 g_thuumCooldown = THUUM_CUT_FALLBACK;
-                Settings::SaveSetting("ThuumCooldown", g_thuumCooldown);
+                Settings::SaveSetting("ThuumCooldown", THUUM_CUT_FALLBACK);
 
-                Commit(g_thuumMelee, GLOBAL_THUUM_MELEE, "ThuumMelee", THUUM_MELEE_SHIPPED);
-                Commit(g_thuumPower, GLOBAL_THUUM_POWER, "ThuumPower", THUUM_POWER_SHIPPED);
+                Post(g_thuumMelee, g_meleeView, GLOBAL_THUUM_MELEE, "ThuumMelee", THUUM_MELEE_SHIPPED);
+                Post(g_thuumPower, g_powerView, GLOBAL_THUUM_POWER, "ThuumPower", THUUM_POWER_SHIPPED);
 
                 g_bloodthirst = BLOODTHIRST_FALLBACK;
-                Settings::SaveSetting("Bloodthirst", g_bloodthirst);
+                Settings::SaveSetting("Bloodthirst", BLOODTHIRST_FALLBACK);
 
                 auto& s = Racials::Shehai();
                 s.hits = SHEHAI_HITS_FALLBACK;
                 s.window = SHEHAI_WINDOW_FALLBACK;
                 s.gap = SHEHAI_GAP_FALLBACK;
-                Settings::SaveSetting("ShehaiHits", static_cast<float>(s.hits));
-                Settings::SaveSetting("ShehaiWindow", s.window);
-                Settings::SaveSetting("ShehaiGap", s.gap);
+                Settings::SaveSetting("ShehaiHits", static_cast<float>(SHEHAI_HITS_FALLBACK));
+                Settings::SaveSetting("ShehaiWindow", SHEHAI_WINDOW_FALLBACK);
+                Settings::SaveSetting("ShehaiGap", SHEHAI_GAP_FALLBACK);
             }
         }
     };
@@ -840,7 +921,7 @@ namespace
 
         void Draw() override
         {
-            const auto& sections = Settings::GainSections();
+            const auto sections = Settings::GainSections();
             if (sections.empty()) {
                 FUCK::TextColored(BAD, "No attribute sections found in AetherialBloodlines.ini.");
                 return;
@@ -905,17 +986,15 @@ namespace
 
         void Draw() override
         {
-            const auto snap = Racials::GetSnapshot();
+            const auto card = LatestCard();
+            if (!card) {
+                FUCK::TextDisabled("%s", "Reading the game...");
+                return;
+            }
+            const auto& snap = card->snap;
 
             if (FUCK::CollapsingHeader("Crosshair (Green Pact Inspector)", ImGuiTreeNodeFlags_DefaultOpen)) {
-                RE::TESObjectREFR* target = nullptr;
-                if (auto* pick = RE::CrosshairPickData::GetSingleton()) {
-                    if (auto ref = pick->GetActiveTarget().get()) {
-                        target = ref.get();
-                    }
-                }
-                const auto text = GreenPact::DescribeTarget(target);
-                FUCK::TextUnformatted(text.c_str());
+                FUCK::TextUnformatted(card->crosshair.c_str());
             }
 
             if (FUCK::CollapsingHeader("Shouts (Recovery Inspector)", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -939,12 +1018,12 @@ namespace
 
                     FUCK::SliderInt("Oath-Forged Override", &g_orcOverride, 0, 10);
                     if (FUCK::Button("Apply Oath-Forged")) {
-                        Racials::DebugSetOrcStacks(g_orcOverride);
+                        RunOnGame([value = g_orcOverride]() { Racials::DebugSetOrcStacks(value); });
                     }
 
                     FUCK::SliderInt("Green Pact Oath Override", &g_bosmerOverride, 0, 6);
                     if (FUCK::Button("Apply Green Pact Oath")) {
-                        Racials::DebugSetBosmerStacks(g_bosmerOverride);
+                        RunOnGame([value = g_bosmerOverride]() { Racials::DebugSetBosmerStacks(value); });
                     }
                 }
             }
@@ -973,7 +1052,7 @@ namespace
                 FUCK::SeparatorText("Hit Log");
                 FUCK::SliderInt("Hits to log", &g_hitLogCount, 1, 100);
                 if (FUCK::Button(snap.hitLogRemaining > 0 ? "Stop Hit Log" : "Start Hit Log")) {
-                    Racials::StartHitLog(snap.hitLogRemaining > 0 ? 0 : g_hitLogCount);
+                    RunOnGame([value = snap.hitLogRemaining > 0 ? 0 : g_hitLogCount]() { Racials::StartHitLog(value); });
                 }
                 if (snap.hitLogRemaining > 0) {
                     FUCK::SameLine();
@@ -983,7 +1062,7 @@ namespace
                 FUCK::SeparatorText("Dodge Tag Log");
                 FUCK::SliderInt("Tags to log", &g_animTagLogCount, 1, 100);
                 if (FUCK::Button(snap.animTagLogRemaining > 0 ? "Stop Dodge Tag Log" : "Start Dodge Tag Log")) {
-                    Racials::StartAnimTagLog(snap.animTagLogRemaining > 0 ? 0 : g_animTagLogCount);
+                    RunOnGame([value = snap.animTagLogRemaining > 0 ? 0 : g_animTagLogCount]() { Racials::StartAnimTagLog(value); });
                 }
                 if (snap.animTagLogRemaining > 0) {
                     FUCK::SameLine();
@@ -1070,17 +1149,17 @@ namespace Menu
     float PyreHealthThreshold()
     {
         // Stored as a percent for the slider and the console, used as a fraction
-        return std::clamp(g_pyreHealth, 0.0f, 100.0f) * 0.01f;
+        return std::clamp(g_pyreHealth.load(), 0.0f, 100.0f) * 0.01f;
     }
 
     float ThuumCutFraction()
     {
-        return std::clamp(g_thuumCooldown, 0.0f, static_cast<float>(THUUM_CUT_MAX)) * 0.01f;
+        return std::clamp(g_thuumCooldown.load(), 0.0f, static_cast<float>(THUUM_CUT_MAX)) * 0.01f;
     }
 
     float BloodthirstFraction()
     {
-        return std::clamp(g_bloodthirst, 0.0f, BLOODTHIRST_MAX) * 0.01f;
+        return std::clamp(g_bloodthirst.load(), 0.0f, BLOODTHIRST_MAX) * 0.01f;
     }
 
     void LoadForms()
@@ -1091,7 +1170,7 @@ namespace Menu
         g_thuumCooldown = Settings::GetSetting("ThuumCooldown", THUUM_CUT_FALLBACK);
         g_bloodthirst = Settings::GetSetting("Bloodthirst", BLOODTHIRST_FALLBACK);
         logger::info("Menu: from the INI, DrawbackMastery {}, PyreHealth {}, ThuumCooldown {}, Bloodthirst {}.",
-                     g_drawbackMastery.load(), g_pyreHealth, g_thuumCooldown, g_bloodthirst);
+                     g_drawbackMastery.load(), g_pyreHealth.load(), g_thuumCooldown.load(), g_bloodthirst.load());
 
         g_thuumMelee = RE::TESForm::LookupByEditorID<RE::TESGlobal>(GLOBAL_THUUM_MELEE);
         g_thuumPower = RE::TESForm::LookupByEditorID<RE::TESGlobal>(GLOBAL_THUUM_POWER);

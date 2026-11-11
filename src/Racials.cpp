@@ -442,7 +442,7 @@ namespace
         g_shehaiCount = (sameTarget || (a_target == 0 && inTime)) && inTime ? g_shehaiCount + 1 : 1;
         g_shehaiLast = now;
 
-        logger::debug("shehai: {} of {}, {}", g_shehaiCount, g_shehai.hits, a_why);
+        logger::debug("shehai: {} of {}, {}", g_shehaiCount, g_shehai.hits.load(), a_why);
 
         if (g_shehaiCount < g_shehai.hits) return;
 
@@ -1491,8 +1491,8 @@ namespace Racials
         g_shehai.hits = static_cast<std::int32_t>(Settings::GetSetting("ShehaiHits", 3.0f));
         g_shehai.window = Settings::GetSetting("ShehaiWindow", 4.0f);
         g_shehai.gap = Settings::GetSetting("ShehaiGap", 0.25f);
-        logger::info("Racials: Shehai tuning, {} hits in {:.1f}s, {:.2f}s between blows.", g_shehai.hits,
-                     g_shehai.window, g_shehai.gap);
+        logger::info("Racials: Shehai tuning, {} hits in {:.1f}s, {:.2f}s between blows.", g_shehai.hits.load(),
+                     g_shehai.window.load(), g_shehai.gap.load());
     }
 
     void DebugSetOrcStacks(std::int32_t a_value)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 /// Racial behaviour: the Orsimer and Bosmer stacking counters, the hit-driven racials, the equip-driven ones.
 /// The counters are mirrored into their GlobalVariables because the perk entry-point conditions read those globals
 
@@ -56,11 +58,12 @@ namespace Racials
     [[nodiscard]] float BloodthirstDamageShare();
 
     /// @brief Shehai's timing. Owned by the DLL and stored in the INI rather than a GlobalVariable, because no record condition reads it, so a GLOB would cost a CK edit and buy nothing.
+    /// @note Atomic because the menu's sliders write it from the menu's thread while hits read it on the game's.
     struct ShehaiTuning
     {
-        std::int32_t hits{ 3 };
-        float window{ 4.0f };
-        float gap{ 0.25f };
+        std::atomic<std::int32_t> hits{ 3 };
+        std::atomic<float> window{ 4.0f };
+        std::atomic<float> gap{ 0.25f };
     };
 
     /// @brief The live tuning, mutable so the menu can edit it in place. Loaded from the INI.

@@ -46,7 +46,8 @@ namespace Settings
 
     /// @brief Every attribute-gain section the INI defines, in file order and original casing.
     /// @note "Default" plus one per race. Driven by the file, so an added section shows up on its own.
-    [[nodiscard]] const std::vector<std::string>& GainSections();
+    /// @note A copy, since the menu reads it from another thread.
+    [[nodiscard]] std::vector<std::string> GainSections();
 
     /// @brief The gains an INI section currently holds, e.g. "NordRace" or "Default".
     [[nodiscard]] AttributeGains GetGainsForSection(std::string_view a_section);

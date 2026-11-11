@@ -5,6 +5,7 @@
 #include <charconv>
 #include <format>
 #include <fstream>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -50,6 +51,10 @@ namespace
 
     // Section names in file order and original casing, so the menu can list and label them
     std::vector<std::string> g_gainSections;
+
+    // The menu draws on its own thread while the game reads these on the main one, so every access takes this lock
+    // Recursive because Reset All goes through SetGain and PersistGain, which lock too
+    std::recursive_mutex g_lock;
 
     [[nodiscard]] const char* GainKeyName(RE::ActorValue a_actorValue)
     {
@@ -152,6 +157,7 @@ namespace Settings
 
     float GetSetting(std::string_view a_key, float a_fallback)
     {
+        std::scoped_lock lock(g_lock);
         const auto it = g_menuSettings.find(ToLower(std::string(a_key)));
         return it != g_menuSettings.end() ? it->second : a_fallback;
     }
@@ -165,6 +171,7 @@ namespace Settings
     // Same approach as ItzIvy05/TearsofKyne/src/Settings.cpp:365-387, but it tracks the section since every race section has its own Health, Magicka and Stamina
     void WriteKey(std::string_view a_section, std::string_view a_key, const std::string& a_formatted)
     {
+        std::scoped_lock lock(g_lock);
         const auto wantedSection = ToLower(std::string(a_section));
         const auto wantedKey = ToLower(std::string(a_key));
 
@@ -230,17 +237,20 @@ namespace Settings
 
     void SaveSetting(std::string_view a_key, float a_value)
     {
+        std::scoped_lock lock(g_lock);
         g_menuSettings[ToLower(std::string(a_key))] = a_value;
         WriteKey("Settings", a_key, std::format("{} = {}", a_key, a_value));
     }
 
-    const std::vector<std::string>& GainSections()
+    std::vector<std::string> GainSections()
     {
+        std::scoped_lock lock(g_lock);
         return g_gainSections;
     }
 
     AttributeGains GetGainsForSection(std::string_view a_section)
     {
+        std::scoped_lock lock(g_lock);
         const auto it = g_raceGains.find(ToLower(std::string(a_section)));
         return it != g_raceGains.end() ? it->second : g_defaultGains;
     }
@@ -273,6 +283,7 @@ namespace Settings
 
     void SetGain(std::string_view a_section, RE::ActorValue a_actorValue, std::int32_t a_value)
     {
+        std::scoped_lock lock(g_lock);
         if (!GainKeyName(a_actorValue)) {
             return;
         }
@@ -301,6 +312,7 @@ namespace Settings
 
     void PersistGain(std::string_view a_section, RE::ActorValue a_actorValue)
     {
+        std::scoped_lock lock(g_lock);
         const auto* key = GainKeyName(a_actorValue);
         if (!key) {
             return;
@@ -312,6 +324,7 @@ namespace Settings
 
     void ResetGainsToDefaults()
     {
+        std::scoped_lock lock(g_lock);
         for (const auto& section : g_gainSections) {
             const auto defaults = DefaultGainsForSection(section);
             SetGain(section, RE::ActorValue::kHealth, defaults.health);
@@ -327,6 +340,7 @@ namespace Settings
 
     void Load()
     {
+        std::scoped_lock lock(g_lock);
         g_defaultGains = {};
         g_raceGains.clear();
         g_gainSections.clear();
@@ -429,6 +443,7 @@ namespace Settings
 
     AttributeGains GetForRace(RE::TESRace* a_race)
     {
+        std::scoped_lock lock(g_lock);
         auto editorID = ToLower(std::string(GetRaceEditorID(a_race)));
         if (!editorID.empty()) {
             if (const auto it = g_raceGains.find(editorID); it != g_raceGains.end()) {
