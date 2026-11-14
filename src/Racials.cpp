@@ -35,6 +35,11 @@ namespace
 
     constexpr std::int32_t ORC_MAX_STACKS = 10;
     constexpr std::int32_t BOSMER_MAX_STACKS = 6;
+    constexpr std::int32_t NORD_MAX_STACKS = 5;
+    constexpr float NORD_CRISIS_HEALTH = 0.30f;
+
+    // 15 ft, at the 0.046875 ft per unit Simple Spells' LuDetectMoneySCRIPT divides by to turn feet into units
+    constexpr float ONRYO_RADIUS = 320.0f;
     constexpr float IMPERIAL_PROC_CHANCE = 0.15f;
     constexpr float KHAJIIT_BLEED_CHANCE = 0.50f;
     constexpr float ALTMER_BURN_THRESHOLD = 0.33f;
@@ -53,6 +58,9 @@ namespace
 
     // Has to be longer than any alt-death mod's calm down, or a StopCombat mid fight re-arms the pyre on the same bandits
     constexpr float PYRE_REARM_DELAY = 30.0f;
+
+    // The Nord's crisis re-arms on the same lull, for the same reason
+    constexpr float CRISIS_REARM_DELAY = PYRE_REARM_DELAY;
 
     // Kills renew the pyre, so it needs a cap or a long dungeon fight holds it up indefinitely
     constexpr std::int32_t PYRE_MAX_TIER = 3;
@@ -106,7 +114,8 @@ namespace
 
         RE::BGSPerk* nordPerk{ nullptr };
         RE::SpellItem* thuumRekindled{ nullptr };
-
+        RE::SpellItem* nordCrisis{ nullptr };
+        RE::SpellItem* onryoDread{ nullptr };
         RE::BGSPerk* redguardPerk{ nullptr };
         RE::SpellItem* shehai{ nullptr };
     };
@@ -120,6 +129,9 @@ namespace
     RE::ActorValue g_orcStacksAV{ RE::ActorValue::kNone };
     RE::ActorValue g_bosmerStacksAV{ RE::ActorValue::kNone };
     bool g_avgReady{ false };
+
+    // Resolved on its own, so a TOML without the Mettle entry leaves the other two counters working
+    RE::ActorValue g_mettleAV{ RE::ActorValue::kNone };
 
     // TK Dodge Addon's own extra value, kNone when it isn't installed, so the addon stays optional
     RE::ActorValue g_dodgeCostAV{ RE::ActorValue::kNone };
@@ -167,6 +179,18 @@ namespace
     constexpr const char* SHEHAI_MESSAGE = "The Shehai takes shape.";
     float g_voiceLastSeen{ 0.0f };
     bool g_thuumCutThisRecovery{ false };
+
+    // The Nord's crisis and the shout watch that feeds Mettle
+    constexpr const char* CRISIS_MESSAGE = "The ancestral heroes of Sovngarde revitalise you!";
+    bool g_crisisUsedThisFight{ false };
+    float g_mettleVoiceSeen{ 0.0f };
+
+    // A save loaded mid cooldown would read as a fresh shout on the first tick, so that tick only takes the reading
+    bool g_mettleVoiceSeeded{ false };
+
+    // A swing that strikes several actors sends a hit for each, and it is still one attack
+    constexpr float METTLE_SWING_GAP = 0.25f;
+    std::chrono::steady_clock::time_point g_mettleLastSwing{};
 
     // Editor ID first, load-order fallback
     template <class T>
@@ -301,7 +325,7 @@ namespace
 
     [[nodiscard]] std::int32_t GetStacks(RE::Actor* a_actor, RE::ActorValue a_av)
     {
-        if (!g_avgReady || !a_actor) return 0;
+        if (!g_avgReady || !a_actor || a_av == RE::ActorValue::kNone) return 0;
         return static_cast<std::int32_t>(a_actor->AsActorValueOwner()->GetActorValue(a_av));
     }
 
@@ -310,7 +334,7 @@ namespace
                    const char* a_counter, const char* a_why)
     {
         if (!a_actor) return;
-        if (!g_avgReady) {
+        if (!g_avgReady || a_av == RE::ActorValue::kNone) {
             logger::debug("stack: {} {} ignored, AVG not ready", Who(a_actor), a_counter);
             return;
         }
@@ -725,6 +749,79 @@ namespace
         CastOn(g_forms.thuumRekindled, a_player, a_player);
     }
 
+    // Same shape as the pyre: once a fight, checked from the tick and from hits taken
+    void TryNordCrisis(RE::Actor* a_player)
+    {
+        if (g_crisisUsedThisFight || !g_forms.nordCrisis) return;
+        if (GetActorValuePercentage(a_player, RE::ActorValue::kHealth) >= NORD_CRISIS_HEALTH) return;
+
+        // Perk check last, this runs every frame of a fight
+        if (!HasPerk(a_player, g_forms.nordPerk)) return;
+
+        g_crisisUsedThisFight = true;
+        CastOn(g_forms.nordCrisis, a_player, a_player);
+        Notify::Show(CRISIS_MESSAGE);
+        logger::debug("power: Nord crisis answered, health below {:.0f}%", NORD_CRISIS_HEALTH * 100.0f);
+    }
+
+    // Every hostile in reach falters. Collected first so no cast runs while the process list is being walked
+    void TryOnryoDread(RE::Actor* a_source)
+    {
+        if (!g_forms.onryoDread || !a_source) return;
+
+        auto* lists = RE::ProcessLists::GetSingleton();
+        if (!lists) return;
+
+        const auto origin = a_source->GetPosition();
+        std::vector<RE::NiPointer<RE::Actor>> struck;
+
+        // The high process actors, the same set Ivy's alt death calms (ItzIvy05/IvysAltDeathMod/src/CalmSystem.cpp:54-61)
+        for (auto& handle : lists->highActorHandles) {
+            auto actor = handle.get();
+            if (!actor || actor.get() == a_source || actor->IsDead()) continue;
+            if (!actor->IsHostileToActor(a_source)) continue;
+            if (actor->GetPosition().GetDistance(origin) > ONRYO_RADIUS) continue;
+            struck.push_back(std::move(actor));
+        }
+
+        for (const auto& actor : struck) {
+            CastOn(g_forms.onryoDread, a_source, actor.get());
+        }
+        logger::debug("power: Onryo Dread, {} enemies within 15 ft", struck.size());
+    }
+
+    // Read before the bump, so the attack that only reaches five stacks does not count as a five stack attack
+    void BuildMettle(RE::Actor* a_nord, bool a_powerAttack, const char* a_why)
+    {
+        const auto now = std::chrono::steady_clock::now();
+        const float since = std::chrono::duration<float>(now - g_mettleLastSwing).count();
+        if (since < METTLE_SWING_GAP) {
+            logger::debug("stack: Sovngarde's Mettle ignored, {:.3f}s after the last swing", since);
+            return;
+        }
+        g_mettleLastSwing = now;
+
+        const bool atMax = GetStacks(a_nord, g_mettleAV) >= NORD_MAX_STACKS;
+        BumpStacks(a_nord, g_mettleAV, NORD_MAX_STACKS, "Sovngarde's Mettle", a_why);
+        if (a_powerAttack && atMax) {
+            TryOnryoDread(a_nord);
+        }
+    }
+
+    // Recovery only rises when a shout fires (see TryThuumRekindled), so each rise is one shout
+    void WatchShouts(RE::Actor* a_player)
+    {
+        auto* high = VoiceBlock(a_player);
+        const float recovery = high ? high->voiceRecoveryTime : 0.0f;
+        const bool rose = g_mettleVoiceSeeded && recovery > g_mettleVoiceSeen;
+        g_mettleVoiceSeen = recovery;
+        g_mettleVoiceSeeded = true;
+
+        if (!rose || g_mettleAV == RE::ActorValue::kNone) return;
+        if (!HasPerk(a_player, g_forms.nordPerk)) return;
+        BumpStacks(a_player, g_mettleAV, NORD_MAX_STACKS, "Sovngarde's Mettle", "shout");
+    }
+
     // Stacks fall on a tick, because the player almost never fires a combat event
     void TickDecay(float a_delta)
     {
@@ -734,12 +831,14 @@ namespace
         if (!player) return;
 
         TryAttachDodgeSink();
+        WatchShouts(player);
 
         if (player->IsInCombat()) {
             g_outOfCombatFor = 0.0f;
             g_decayAccum = 0.0f;
             g_peaceFor = 0.0f;
             TryVelothsPyre(player);
+            TryNordCrisis(player);
             return;
         }
 
@@ -756,10 +855,15 @@ namespace
             g_pyreTier = 0;
             logger::debug("power: Veloth's Pyre re-armed after {:.0f}s out of combat", g_peaceFor);
         }
+        if (g_peaceFor >= CRISIS_REARM_DELAY && g_crisisUsedThisFight) {
+            g_crisisUsedThisFight = false;
+            logger::debug("power: Nord crisis re-armed after {:.0f}s out of combat", g_peaceFor);
+        }
 
         const auto orc = GetStacks(player, g_orcStacksAV);
         const auto bosmer = GetStacks(player, g_bosmerStacksAV);
-        if (orc <= 0 && bosmer <= 0) {
+        const auto mettle = GetStacks(player, g_mettleAV);
+        if (orc <= 0 && bosmer <= 0 && mettle <= 0) {
             g_outOfCombatFor = 0.0f;
             g_decayAccum = 0.0f;
             return;
@@ -777,6 +881,9 @@ namespace
         }
         if (bosmer > 0) {
             SetStacks(player, g_bosmerStacksAV, bosmer - 1, BOSMER_MAX_STACKS, "Green Pact", "cooling out of combat");
+        }
+        if (mettle > 0) {
+            SetStacks(player, g_mettleAV, mettle - 1, NORD_MAX_STACKS, "Sovngarde's Mettle", "cooling out of combat");
         }
     }
 
@@ -824,6 +931,7 @@ namespace
 
             SetStacks(actor, g_orcStacksAV, 0, ORC_MAX_STACKS, "Oath-Forged", "left combat");
             SetStacks(actor, g_bosmerStacksAV, 0, BOSMER_MAX_STACKS, "Green Pact", "left combat");
+            SetStacks(actor, g_mettleAV, 0, NORD_MAX_STACKS, "Sovngarde's Mettle", "left combat");
 
             return RE::BSEventNotifyControl::kContinue;
         }
@@ -853,6 +961,7 @@ namespace
 
             const bool blocked = a_event->flags.all(RE::TESHitEvent::Flag::kHitBlocked);
             const bool bashed = a_event->flags.all(RE::TESHitEvent::Flag::kBashAttack);
+            const bool powerAttack = a_event->flags.all(RE::TESHitEvent::Flag::kPowerAttack);
             auto* source = a_event->source ? RE::TESForm::LookupByID(a_event->source) : nullptr;
             auto* weapon = source ? source->As<RE::TESObjectWEAP>() : nullptr;
 
@@ -865,9 +974,9 @@ namespace
             // While the hit log is counting down these go out at info, so a short capture doesn't need debug turned on
             if (byPlayer && (g_hitLogRemaining > 0 || spdlog::should_log(spdlog::level::debug))) {
                 const auto line =
-                    std::format("hit: source {:08X} {} \"{}\" | projectile {:08X} | melee={} bow={} bash={} blocked={}",
+                    std::format("hit: source {:08X} {} \"{}\" | projectile {:08X} | melee={} bow={} bash={} power={} blocked={}",
                                 a_event->source, SourceKind(source), source ? source->GetName() : "",
-                                a_event->projectile, meleeWeaponHit, bowHit, bashed, blocked);
+                                a_event->projectile, meleeWeaponHit, bowHit, bashed, powerAttack, blocked);
                 if (g_hitLogRemaining > 0) {
                     --g_hitLogRemaining;
                     logger::info("{} | {} left", line, g_hitLogRemaining);
@@ -890,7 +999,7 @@ namespace
             if (g_precisionDriving) {
                 // Precision owns the Orsimer branch outright, see OnPrecisionHit
             } else if (meleeWeaponHit && !blocked && liveVictim && HasPerk(aggressor, g_forms.orcPerk)) {
-                if (a_event->flags.all(RE::TESHitEvent::Flag::kPowerAttack)) {
+                if (powerAttack) {
                     TryBloodthirstSpend(aggressor, victim);
                 } else {
                     BumpStacks(aggressor, g_orcStacksAV, ORC_MAX_STACKS, "Oath-Forged", "melee hit dealt");
@@ -909,6 +1018,13 @@ namespace
             // Outside the Precision branch, because the Shehai counts blows and never needs a damage figure
             if (meleeWeaponHit && !blocked && liveVictim) {
                 AdvanceShehai(aggressor, victim->GetFormID(), "melee hit");
+            }
+
+            // A blocked blow still counts here, only a miss builds nothing
+            if ((powerAttack || bashed) && (meleeWeaponHit || bashed) && liveVictim &&
+                HasPerk(aggressor, g_forms.nordPerk)) {
+                BuildMettle(aggressor, powerAttack,
+                            powerAttack ? (bashed ? "power bash landed" : "power attack landed") : "bash landed");
             }
 
             if (HasPerk(aggressor, g_forms.bosmerPerk)) {
@@ -983,6 +1099,7 @@ namespace
 
             if (victim == Player()) {
                 TryVelothsPyre(victim);
+                TryNordCrisis(victim);
             }
 
             if (HasPerk(victim, g_forms.imperialPerk) && RandomUnit() < IMPERIAL_PROC_CHANCE) {
@@ -1254,7 +1371,8 @@ namespace Racials
 
         g_forms.nordPerk = Resolve<RE::BGSPerk>("Apo_AncestralValorPerk", 0x82A, AB_PLUGIN);
         g_forms.redguardPerk = Resolve<RE::BGSPerk>("Apo_AnseisGambitPerk", 0x80C, AB_PLUGIN);
-
+        g_forms.nordCrisis = Resolve<RE::SpellItem>("Apo_AncestralValorBuffSpell", 0x82F, AB_PLUGIN);
+        g_forms.onryoDread = Resolve<RE::SpellItem>("Apo_OnryoDreadSpell", 0xE56, AB_PLUGIN);
         // Optional: the racial abilities are being built one race at a time, so a missing one is not an error
         g_forms.velothsPyre = RE::TESForm::LookupByEditorID<RE::SpellItem>("Apo_VelothsPyrePower");
         g_forms.velothsPyre2 = RE::TESForm::LookupByEditorID<RE::SpellItem>("Apo_VelothsPyrePower2");
@@ -1287,6 +1405,14 @@ namespace Racials
         g_orcStacksAV = RE::GetActorValueIDFromName("Apo_OathForgedStacks");
         g_bosmerStacksAV = RE::GetActorValueIDFromName("Apo_GreenPactStacks");
         g_dodgeCostAV = RE::GetActorValueIDFromName("DodgeCostModifier");
+        g_mettleAV = RE::GetActorValueIDFromName("Apo_SovngardeMettleStacks");
+
+        if (g_mettleAV == RE::ActorValue::kNone || g_mettleAV == RE::ActorValue::kTotal) {
+            g_mettleAV = RE::ActorValue::kNone;
+            logger::error("Racials: AVG did not know Apo_SovngardeMettleStacks, Sovngarde's Mettle is inert.");
+        } else {
+            logger::info("Racials: Sovngarde's Mettle resolved, av {}.", static_cast<int>(g_mettleAV));
+        }
 
         if (g_dodgeCostAV == RE::ActorValue::kNone || g_dodgeCostAV == RE::ActorValue::kTotal) {
             g_dodgeCostAV = RE::ActorValue::kNone;
@@ -1378,6 +1504,10 @@ namespace Racials
         g_shehaiLast = {};
         g_thuumCutThisRecovery = false;
         g_voiceLastSeen = 0.0f;
+        g_crisisUsedThisFight = false;
+        g_mettleVoiceSeen = 0.0f;
+        g_mettleVoiceSeeded = false;
+        g_mettleLastSwing = {};
         g_lastSear.clear();
 
         // The load rebuilds the player's graph, so the sink is gone and the flag that says otherwise is stale (ersh1/Precision/src/main.cpp:25-30)
@@ -1428,7 +1558,8 @@ namespace Racials
         const bool anchored = CallSite::Destination(site - 5) == REL::ID(21923).address() ||
                               CallSite::Destination(site + 5) == REL::ID(78641).address();
         if (!CallSite::Hookable(dest, REL::ID(21873).address(), anchored)) {
-            logger::error("Racials: stack decay, the Veloth's Pyre re-arm and the dodge sink attach are off, "
+            logger::error("Racials: stack decay, the Veloth's Pyre and Nord crisis re-arms, shouts building Mettle and "
+                          "the dodge sink attach are off, "
                           "SkyrimSE.exe+{:X} is not a verified main update call.",
                           site - REL::Module::get().base());
             return;
@@ -1453,6 +1584,9 @@ namespace Racials
         s.pyreTier = g_pyreTier;
         s.pyreUsedThisFight = g_pyreUsedThisFight;
         s.thuumCutThisRecovery = g_thuumCutThisRecovery;
+        s.mettleReady = g_avgReady && g_mettleAV != RE::ActorValue::kNone;
+        s.mettleStacks = GetStacks(Player(), g_mettleAV);
+        s.crisisUsedThisFight = g_crisisUsedThisFight;
 
         if (auto* high = VoiceBlock(Player())) {
             s.voiceBlockFound = true;
@@ -1502,6 +1636,15 @@ namespace Racials
     void DebugSetBosmerStacks(std::int32_t a_value)
     {
         SetStacks(Player(), g_bosmerStacksAV, a_value, BOSMER_MAX_STACKS, "Green Pact", "set from the Debug page");
+    }
+    void DebugSetMettleStacks(std::int32_t a_value)
+    {
+        SetStacks(Player(), g_mettleAV, a_value, NORD_MAX_STACKS, "Sovngarde's Mettle", "set from the Debug page");
+    }
+
+    std::int32_t MettleStacks()
+    {
+        return GetStacks(Player(), g_mettleAV);
     }
 
     void StartHitLog(std::int32_t a_hits)

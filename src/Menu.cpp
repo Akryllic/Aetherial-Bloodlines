@@ -68,6 +68,7 @@ namespace
 
     int g_orcOverride{ 0 };
     int g_bosmerOverride{ 0 };
+    int g_mettleOverride{ 0 };
     int g_hitLogCount{ 20 };
     int g_animTagLogCount{ 20 };
 
@@ -112,6 +113,8 @@ namespace
         kNone,
         kSiphon,       // an Alteration armour spell or a Ward halves it while it holds
         kBoundWeapon,  // a bound weapon in either hand lifts it
+        kMettle,       // 3 stacks of Sovngarde's Mettle lift it
+        kMettleCombat, // 3 stacks of Sovngarde's Mettle lift it, in combat only
     };
 
     struct DrawbackSpec
@@ -200,9 +203,11 @@ namespace
             {
                 { .text = "Above 85% Health, you take 20% more physical damage.",
                     .overcome = { {}, { "IWP_PERK_HARM_Bulwark", "PoE_PERK_LARM_BattleRush1" } },
+                    .accommodation = Accommodation::kMettle,
                     .note = "Shaken off at 3 stacks of Sovngarde's Mettle." },
                 { .text = "Health regeneration pauses above 70% Health.",
                     .overcome = { {}, { "Conditioning", "PoE_PERK_LARM_LightMatchingSet2" } },
+                    .accommodation = Accommodation::kMettleCombat,
                     .note = "Lifted in combat at 3 stacks of Sovngarde's Mettle." },
                 { .text = "Magic Resistance is 15% lower.",
                     .overcome = { {}, { "IWP_PERK_HARM_ReflectiveCarapace", "PoE_PERK_LARM_ElusiveZephyr", "ISP_PERK_SPEECH_Dovahziil" } } },
@@ -518,6 +523,18 @@ namespace
         return false;
     }
 
+    // Mirrors the records: the damage band needs 3 stacks, the regen pause needs them in combat too
+    [[nodiscard]] bool MettleLifts(RE::Actor* a_actor, Accommodation a_accommodation)
+    {
+        if (a_accommodation != Accommodation::kMettle && a_accommodation != Accommodation::kMettleCombat) {
+            return false;
+        }
+        if (Racials::MettleStacks() < Racials::METTLE_SHAKE_OFF) {
+            return false;
+        }
+        return a_accommodation == Accommodation::kMettle || a_actor->IsInCombat();
+    }
+
     [[nodiscard]] CardLine BuildLine(RE::Actor* a_player, const DrawbackSpec& a_spec, bool a_drawbacksOn, bool a_masteryOn)
     {
         CardLine line;
@@ -573,6 +590,9 @@ namespace
             line.status = "Overcome";
             line.color = GOOD;
         } else if (a_spec.accommodation == Accommodation::kBoundWeapon && HoldsBoundWeapon(a_player)) {
+            line.status = "Suppressed";
+            line.color = GOOD;
+        } else if (MettleLifts(a_player, a_spec.accommodation)) {
             line.status = "Suppressed";
             line.color = GOOD;
         } else if ((a_masteryOn && MeetsExit(a_player, a_spec.halve)) || materialHalves || siphonHalves) {
@@ -757,7 +777,13 @@ namespace
             } else {
                 FUCK::Text("Oath-Forged (Orsimer): %d / 10", snap.orcStacks);
                 FUCK::Text("Green Pact Oath (Bosmer): %d / 6", snap.bosmerStacks);
+                if (snap.mettleReady) {
+                    FUCK::Text("Sovngarde's Mettle (Nord): %d / 5", snap.mettleStacks);
+                } else {
+                    FUCK::TextColored(BAD, "%s", "Sovngarde's Mettle (Nord): counter missing from the AVG file.");
+                }
             }
+            FUCK::Text("Crisis (Nord): %s", snap.crisisUsedThisFight ? "Spent this fight" : "Ready");
 
             FUCK::Text("Shehai (Redguard): %d / %d blows%s", snap.shehaiCount, Racials::Shehai().hits.load(),
                        card.shehaiActive ? " [Shehai Active]" : "");
@@ -1024,6 +1050,12 @@ namespace
                     FUCK::SliderInt("Green Pact Oath Override", &g_bosmerOverride, 0, 6);
                     if (FUCK::Button("Apply Green Pact Oath")) {
                         RunOnGame([value = g_bosmerOverride]() { Racials::DebugSetBosmerStacks(value); });
+                    }
+
+                    FUCK::Text("Sovngarde's Mettle  %d of 5", snap.mettleStacks);
+                    FUCK::SliderInt("Sovngarde's Mettle Override", &g_mettleOverride, 0, 5);
+                    if (FUCK::Button("Apply Sovngarde's Mettle")) {
+                        RunOnGame([value = g_mettleOverride]() { Racials::DebugSetMettleStacks(value); });
                     }
                 }
             }

@@ -7,6 +7,9 @@
 
 namespace Racials
 {
+    /// @brief Mettle stacks a Nord needs to shake off the opening drawbacks.
+    inline constexpr std::int32_t METTLE_SHAKE_OFF = 3;
+
     /// @brief Resolve every form the module needs. Call on kDataLoaded.
     void LoadForms();
 
@@ -34,6 +37,9 @@ namespace Racials
         std::int32_t pyreTier{ 0 };
         bool pyreUsedThisFight{ false };
         bool thuumCutThisRecovery{ false };
+        bool mettleReady{ false };
+        std::int32_t mettleStacks{ 0 };
+        bool crisisUsedThisFight{ false };
 
         bool voiceBlockFound{ false };
         std::int32_t voiceState{ 0 };
@@ -75,6 +81,11 @@ namespace Racials
     /// @brief Force a counter, to test the perk tiers without farming a fight.
     void DebugSetOrcStacks(std::int32_t a_value);
     void DebugSetBosmerStacks(std::int32_t a_value);
+    void DebugSetMettleStacks(std::int32_t a_value);
+
+    /// @brief The player's Sovngarde's Mettle, 0 when the counter is missing.
+    /// @note Reads an actor value, so call it from the main thread.
+    [[nodiscard]] std::int32_t MettleStacks();
 
     /// @brief Log the next @p a_hits hits the player lands, and any counter cleared meanwhile.
     void StartHitLog(std::int32_t a_hits);

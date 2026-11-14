@@ -20,3 +20,9 @@ plugins = ["Aetherial Bloodlines.esp"]
 type = "Adaptive"
 alias = "Variable02"
 plugins = ["Aetherial Bloodlines.esp"]
+
+# The Paths of Empyrean patch overrides the Nord perk and ability, so it is named here too rather than left to AVG passing the alias down.
+[Apo_SovngardeMettleStacks]
+type = "Adaptive"
+alias = "Variable03"
+plugins = ["Aetherial Bloodlines.esp", "Aetherial Bloodlines - Paths of Empyrean.esp"]
