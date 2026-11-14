@@ -6,38 +6,60 @@
   <title>Aetherial Bloodlines - Interactive Infographic</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      document.documentElement.classList.add("js");
+      function initReveal() {
+        var nodes = document.querySelectorAll("[data-reveal]");
+        var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!("IntersectionObserver" in window) || reduceMotion) {
+          nodes.forEach(function (el) {
+            el.classList.add("is-visible");
+          });
+          return;
+        }
+        var observer = new IntersectionObserver(
+          function (entries, obs) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("is-visible");
+                obs.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.08 }
+        );
+        nodes.forEach(function (el) {
+          observer.observe(el);
+        });
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initReveal);
+      } else {
+        initReveal();
+      }
+    })();
+  </script>
   <style>
     :root {
-      --bg-canvas: #0b0d11;
-      --bg-poster: #12151b;
-      --bg-surface: #171b22;
-      --bg-elevated: #1e232d;
-      --bg-elevated-hover: #262c38;
-      --bg-track: #101318;
-      --text-primary: #ece5d5;
-      --text-secondary: #c5bca8;
-      --gold: #d9b866;
-      --gold-dim: rgba(217, 184, 102, 0.30);
-      --gold-subtle: rgba(217, 184, 102, 0.10);
-      --teal: #7fc8c8;
-      --teal-dim: rgba(127, 200, 200, 0.30);
-      --teal-subtle: rgba(127, 200, 200, 0.09);
-      --crimson-soft: rgba(209, 102, 90, 0.10);
-      --crimson-border: rgba(217, 120, 108, 0.42);
-      --stat-h: #d46b6b;
-      --stat-m: #6ca4db;
-      --stat-s: #6ebc89;
-      --border-subtle: rgba(236, 229, 213, 0.11);
-      --border-strong: rgba(217, 184, 102, 0.42);
-      --race-accent: #d49a6a;
-      --race-accent-soft: rgba(212, 154, 106, 0.16);
-      --race-accent-border: rgba(212, 154, 106, 0.50);
-      --font-display: 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
-      --font-body: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --radius-sm: 4px;
-      --radius-md: 6px;
-      --radius-lg: 10px;
+      --bg-canvas: #0d0d0d;
+      --bg-panel: #101010;
+      --bg-elevated: #151515;
+      --bg-track: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #b0b0b4;
+      --text-dim: #7a7a80;
+      --accent: #86C06C;
+      --amber: #E8B14B;
+      --amber-tint: rgba(232, 177, 75, 0.06);
+      --stat-h: #E9857A;
+      --stat-m: #6FAEE0;
+      --stat-s: #7FC98A;
+      --border-subtle: rgba(255, 255, 255, 0.10);
+      --border-strong: rgba(255, 255, 255, 0.22);
+      --font-sans: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
     }
 
     *, *::before, *::after {
@@ -48,7 +70,7 @@
       scroll-behavior: smooth;
       background-color: var(--bg-canvas);
       color: var(--text-primary);
-      font-family: var(--font-body);
+      font-family: var(--font-sans);
       font-size: 15.5px;
       line-height: 1.55;
       -webkit-font-smoothing: antialiased;
@@ -56,105 +78,195 @@
 
     body {
       margin: 0;
-      padding: 1.25rem 0.85rem 2.5rem;
+      padding: 1.5rem 1rem 3rem;
       min-height: 100vh;
-      background:
-        radial-gradient(ellipse 85% 40% at 50% 0%, rgba(217, 184, 102, 0.08) 0%, transparent 70%),
-        radial-gradient(ellipse 70% 50% at 50% 100%, rgba(127, 200, 200, 0.05) 0%, transparent 70%),
-        var(--bg-canvas);
+      background-color: var(--bg-canvas);
       color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-weight: 400;
     }
 
     :focus-visible {
-      outline: 2px solid var(--teal);
+      outline: 2px solid var(--accent);
       outline-offset: 2px;
+    }
+
+    h1, h2, h3, h4,
+    .poster-title,
+    .section-title,
+    .detail-race-name,
+    .card-heading,
+    .skill-group-label,
+    .closing-title {
+      text-wrap: balance;
+    }
+
+    /* Scroll Fade-in */
+    html.js [data-reveal] {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.75s ease, transform 0.75s ease;
+    }
+
+    html.js [data-reveal].is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html.js [data-reveal] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
     }
 
     /* Infographic Poster Frame */
     .infographic-poster {
       width: 100%;
-      max-width: 1160px;
+      max-width: 1320px;
       margin: 0 auto;
-      background:
-        radial-gradient(ellipse 75% 35% at 50% 12%, var(--race-accent-soft), transparent 70%),
-        linear-gradient(180deg, #151921 0%, #11141a 100%);
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-lg);
-      padding: 1.5rem 1.5rem 1.75rem;
+      background-color: var(--bg-panel);
+      background-image: repeating-linear-gradient(
+        115deg,
+        transparent 0 44px,
+        rgba(255, 255, 255, 0.018) 44px 45px
+      );
+      border: 1px solid var(--border-subtle);
+      border-radius: 0;
+      padding: 2rem 2rem 2.25rem;
       position: relative;
-      box-shadow:
-        0 20px 50px rgba(0, 0, 0, 0.75),
-        inset 0 0 0 1px rgba(236, 229, 213, 0.05);
     }
 
-    /* Decorative Corner Filigree */
+    /* 7. Hide Corner Ornaments */
     .corner-ornament {
-      position: absolute;
-      width: 22px;
-      height: 22px;
-      color: var(--gold);
-      opacity: 0.65;
-      pointer-events: none;
+      display: none !important;
     }
-    .corner-tl { top: 8px; left: 8px; }
-    .corner-tr { top: 8px; right: 8px; transform: scaleX(-1); }
-    .corner-bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
-    .corner-br { bottom: 8px; right: 8px; transform: scale(-1, -1); }
 
     /* 1. Header */
     .poster-header {
       text-align: center;
-      margin-bottom: 1.25rem;
-      padding-bottom: 1rem;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.5rem;
       border-bottom: 1px solid var(--border-subtle);
       position: relative;
     }
 
+    /* Warning Callout Look for Preview Notice */
     .preview-pill {
       display: inline-flex;
       align-items: center;
-      gap: 0.45rem;
-      background: var(--teal-subtle);
-      border: 1px solid var(--teal-dim);
-      color: var(--teal);
-      font-size: 0.82rem;
+      gap: 0.55rem;
+      background: var(--amber-tint);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--amber);
+      border-radius: 0;
+      color: var(--amber);
+      font-size: 0.76rem;
       font-weight: 600;
-      letter-spacing: 0.03em;
-      padding: 0.3rem 0.85rem;
-      border-radius: 999px;
-      margin-bottom: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
+      padding: 0.55rem 1rem;
+      margin-bottom: 1.2rem;
     }
 
     .preview-pill svg {
-      width: 14px;
-      height: 14px;
-      stroke: var(--teal);
+      width: 15px;
+      height: 15px;
+      stroke: var(--amber);
       flex-shrink: 0;
     }
 
-    .poster-title {
-      font-family: var(--font-display);
-      font-size: clamp(1.65rem, 3.8vw, 2.5rem);
-      font-weight: 700;
-      letter-spacing: 0.09em;
+    .eyebrow {
+      font-size: 0.72rem;
+      font-weight: 600;
       text-transform: uppercase;
-      color: var(--gold);
-      margin: 0 0 0.35rem;
-      line-height: 1.15;
-      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+      letter-spacing: 2.4px;
+      color: var(--accent);
+      margin: 0 0 0.45rem;
+    }
+
+    .poster-title {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: var(--font-sans);
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin: 0 0 0.85rem;
+      line-height: 1;
+    }
+
+    .title-hollow {
+      display: block;
+      font-size: clamp(2.5rem, 6.8vw, 5rem);
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: transparent;
+      -webkit-text-stroke: 2px var(--accent);
+      line-height: 0.95;
+    }
+
+    .title-solid {
+      display: block;
+      font-size: clamp(1.5rem, 4vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      margin-top: -0.36em;
+      line-height: 1.05;
+      position: relative;
+      z-index: 1;
     }
 
     .poster-tagline {
-      font-size: clamp(0.95rem, 1.9vw, 1.1rem);
-      color: var(--text-primary);
-      font-style: italic;
+      font-size: clamp(0.95rem, 1.8vw, 1.08rem);
+      color: var(--text-secondary);
+      font-style: normal;
+      font-weight: 400;
       margin: 0 auto;
-      max-width: 660px;
+      max-width: 58ch;
     }
 
-    /* 2. Race Picker Strip (10 Interactive Crest Cards) */
+    /* Stat Strip */
+    .stat-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .stat-item {
+      border-top: 1px solid var(--border-strong);
+      padding-top: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .stat-number {
+      font-family: var(--font-sans);
+      font-size: clamp(1.65rem, 3vw, 2.35rem);
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.1;
+      letter-spacing: 1px;
+    }
+
+    .stat-caption {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
+      color: var(--text-dim);
+    }
+
+    /* 2. Race Picker Strip */
     .picker-section {
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
     }
 
     .race-tablist {
@@ -165,46 +277,45 @@
 
     .race-tab {
       appearance: none;
-      background: var(--bg-surface);
+      background: var(--bg-panel);
       border: 1px solid var(--border-subtle);
       border-top: 2px solid transparent;
-      border-radius: var(--radius-md);
-      padding: 0.55rem 0.6rem;
+      border-radius: 0;
+      padding: 0.65rem 0.7rem;
       text-align: left;
       color: var(--text-primary);
-      font-family: var(--font-body);
+      font-family: var(--font-sans);
       cursor: pointer;
-      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 0.45rem;
+      gap: 0.5rem;
       width: 100%;
     }
 
     .race-tab:hover {
       background: var(--bg-elevated);
-      border-color: rgba(236, 229, 213, 0.25);
+      border-color: var(--border-strong);
     }
 
     .race-tab[aria-selected="true"] {
-      background: linear-gradient(180deg, var(--tab-accent-soft) 0%, var(--bg-elevated) 100%);
-      border-color: var(--tab-accent);
-      border-top: 2px solid var(--tab-accent);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      background: var(--bg-elevated);
+      border-color: var(--border-strong);
+      border-top: 2px solid var(--accent);
     }
 
     .race-tab-top {
       display: flex;
       align-items: flex-start;
-      gap: 0.5rem;
+      gap: 0.55rem;
     }
 
     .race-tab-icon {
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       flex-shrink: 0;
-      color: var(--tab-accent);
+      color: var(--accent);
       margin-top: 0.05rem;
     }
 
@@ -215,24 +326,25 @@
 
     .race-tab-name {
       display: block;
-      font-family: var(--font-display);
-      font-size: 0.92rem;
+      font-family: var(--font-sans);
+      font-size: 0.84rem;
       font-weight: 700;
-      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
       color: var(--text-primary);
-      line-height: 1.2;
+      line-height: 1.25;
     }
 
     .race-tab[aria-selected="true"] .race-tab-name {
-      color: var(--tab-accent);
+      color: var(--accent);
     }
 
     .race-tab-kit {
       display: block;
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       color: var(--text-secondary);
-      line-height: 1.2;
-      margin-top: 0.12rem;
+      line-height: 1.25;
+      margin-top: 0.15rem;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -249,7 +361,7 @@
     .tab-spark-track {
       height: 3px;
       background: var(--bg-track);
-      border-radius: 2px;
+      border-radius: 0;
       overflow: hidden;
     }
 
@@ -257,19 +369,18 @@
     .tab-spark-fill-m { height: 100%; background: var(--stat-m); }
     .tab-spark-fill-s { height: 100%; background: var(--stat-s); }
 
-    /* 3. Infographic Detail Panel (2-Column Bento Grid on Desktop, strict 1..8 DOM order) */
+    /* 3. Infographic Detail Panel */
     .detail-panel {
-      background: var(--bg-surface);
-      border: 1px solid var(--race-accent-border);
-      border-top: 3px solid var(--race-accent);
-      border-radius: var(--radius-lg);
-      padding: 1.35rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-top: 3px solid var(--accent);
+      border-radius: 0;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
       display: grid;
       grid-template-columns: 1.25fr 1fr;
       grid-template-rows: auto auto 1fr;
-      gap: 1rem 1.35rem;
+      gap: 1rem 1.5rem;
       align-items: start;
     }
 
@@ -284,21 +395,21 @@
     }
 
     .info-card {
-      background: var(--bg-elevated);
+      background: var(--bg-panel);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 0.9rem 1.05rem;
+      border-radius: 0;
+      padding: 0.95rem 1.1rem;
     }
 
     /* 3.1 Name and kit title */
     .detail-header {
       display: flex;
       align-items: center;
-      gap: 0.95rem;
-      padding: 0.85rem 1.05rem;
-      background: linear-gradient(90deg, var(--race-accent-soft) 0%, var(--bg-elevated) 85%);
-      border: 1px solid var(--race-accent-border);
-      border-radius: var(--radius-md);
+      gap: 1rem;
+      padding: 0.95rem 1.1rem;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0;
     }
 
     .detail-emblem {
@@ -308,12 +419,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: var(--radius-md);
-      background: var(--bg-poster);
-      border: 1px solid var(--race-accent);
-      color: var(--race-accent);
-      padding: 0.5rem;
-      box-shadow: 0 0 16px var(--race-accent-soft);
+      border-radius: 0;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      color: var(--accent);
+      padding: 0.55rem;
     }
 
     .detail-emblem svg {
@@ -322,25 +432,27 @@
     }
 
     .detail-race-name {
-      font-family: var(--font-display);
-      font-size: clamp(1.45rem, 2.8vw, 1.95rem);
+      font-family: var(--font-sans);
+      font-size: clamp(1.45rem, 2.6vw, 1.9rem);
       font-weight: 700;
-      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--text-primary);
       margin: 0;
-      line-height: 1.12;
-      letter-spacing: 0.05em;
+      line-height: 1.15;
     }
 
     .detail-kit-title {
-      font-family: var(--font-display);
-      font-size: clamp(0.95rem, 1.8vw, 1.12rem);
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
       font-weight: 600;
-      color: var(--teal);
-      margin: 0.18rem 0 0;
-      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
+      color: var(--accent);
+      margin: 0.3rem 0 0;
     }
 
-    /* 3.2 Description (Strengths + Drawback visual split) */
+    /* 3.2 Description (Callout + Warning Callout) */
     .detail-description {
       display: grid;
       gap: 0.75rem;
@@ -348,48 +460,49 @@
 
     .detail-description p {
       margin: 0;
-      padding: 0.85rem 1rem;
-      border-radius: var(--radius-md);
-      font-size: 0.97rem;
+      padding: 0.95rem 1.1rem;
+      border-radius: 0;
+      font-size: 0.95rem;
       line-height: 1.62;
     }
 
     .detail-description p:first-child {
-      background: var(--bg-elevated);
+      background: var(--bg-panel);
       border: 1px solid var(--border-subtle);
-      border-left: 3px solid var(--gold);
-      color: var(--text-primary);
+      border-left: 3px solid var(--accent);
+      color: var(--text-secondary);
     }
 
     .detail-description p:last-child {
-      background: var(--crimson-soft);
-      border: 1px solid var(--crimson-border);
-      border-left: 3px solid var(--stat-h);
-      color: var(--text-primary);
+      background: var(--amber-tint);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--amber);
+      color: var(--amber);
     }
 
     .detail-description strong {
-      color: var(--gold);
-      font-weight: 600;
-    }
-
-    /* 3.3 Overcoming the drawback */
-    .overcoming-card {
-      background: linear-gradient(180deg, var(--teal-subtle) 0%, var(--bg-elevated) 100%);
-      border: 1px solid var(--teal-dim);
-      border-left: 3px solid var(--teal);
-      border-radius: var(--radius-md);
-      padding: 0.9rem 1.05rem;
-    }
-
-    .card-heading {
-      font-family: var(--font-display);
-      font-size: 0.92rem;
+      color: var(--text-primary);
       font-weight: 700;
+    }
+
+    /* 3.3 Overcoming the drawback (Callout look) */
+    .overcoming-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--accent);
+      border-radius: 0;
+      padding: 0.95rem 1.1rem;
+    }
+
+    /* 4. Card headings and small labels in eyebrow style */
+    .card-heading {
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--teal);
-      margin: 0 0 0.65rem;
+      letter-spacing: 2.4px;
+      color: var(--accent);
+      margin: 0 0 0.7rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -397,57 +510,62 @@
     }
 
     .card-heading-note {
-      font-family: var(--font-body);
-      font-size: 0.76rem;
-      font-weight: 500;
-      text-transform: none;
-      letter-spacing: 0;
-      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
     }
 
     .mastery-list {
       margin: 0;
       padding-left: 1.15rem;
       display: grid;
-      gap: 0.4rem;
-      font-size: 0.93rem;
-      color: var(--text-primary);
+      gap: 0.45rem;
+      font-size: 0.92rem;
+      color: var(--text-secondary);
     }
 
     .mastery-list li {
-      line-height: 1.48;
+      line-height: 1.5;
     }
 
     .mastery-list li::marker {
-      color: var(--teal);
+      color: var(--accent);
     }
 
-    /* 3.4 Base Health / Magicka / Stamina Bars (0-140 scale) */
+    /* 3.4 Base Health / Magicka / Stamina Bars */
     .stat-bars-group {
       display: grid;
       gap: 0.55rem;
     }
 
-    .stat-row {
+    .stat-row,
+    .carry-row,
+    .regen-row {
       display: grid;
-      grid-template-columns: 74px 38px 1fr;
+      grid-template-columns: 112px 44px 1fr;
       align-items: center;
       gap: 0.6rem;
     }
 
     .stat-label {
       font-weight: 600;
-      font-size: 0.9rem;
-      color: var(--text-primary);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
+      color: var(--accent);
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
+      gap: 0.4rem;
+      white-space: nowrap;
     }
 
     .stat-pip {
       width: 7px;
       height: 7px;
-      border-radius: 50%;
+      border-radius: 0;
       flex-shrink: 0;
     }
 
@@ -456,18 +574,19 @@
     .pip-s { background: var(--stat-s); }
 
     .stat-value {
+      font-family: var(--font-mono);
       font-variant-numeric: tabular-nums;
       font-weight: 700;
-      font-size: 0.95rem;
-      color: var(--gold);
+      font-size: 0.92rem;
+      color: var(--text-primary);
       text-align: right;
     }
 
     .stat-track {
-      height: 13px;
+      height: 12px;
       background: var(--bg-track);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
+      border-radius: 0;
       position: relative;
       overflow: hidden;
     }
@@ -479,13 +598,13 @@
       background-image: linear-gradient(
         to right,
         transparent calc(25% - 1px),
-        rgba(236, 229, 213, 0.08) 25%,
+        rgba(255, 255, 255, 0.08) 25%,
         transparent calc(25% + 1px),
         transparent calc(50% - 1px),
-        rgba(236, 229, 213, 0.14) 50%,
+        rgba(255, 255, 255, 0.14) 50%,
         transparent calc(50% + 1px),
         transparent calc(75% - 1px),
-        rgba(236, 229, 213, 0.08) 75%,
+        rgba(255, 255, 255, 0.08) 75%,
         transparent calc(75% + 1px)
       );
       pointer-events: none;
@@ -493,35 +612,36 @@
 
     .stat-fill {
       height: 100%;
-      border-radius: 2px;
+      border-radius: 0;
       transition: width 0.25s ease;
     }
 
     .stat-fill-health {
-      background: linear-gradient(90deg, rgba(212, 107, 107, 0.45), var(--stat-h));
+      background: var(--stat-h);
     }
 
     .stat-fill-magicka {
-      background: linear-gradient(90deg, rgba(108, 164, 219, 0.45), var(--stat-m));
+      background: var(--stat-m);
     }
 
     .stat-fill-stamina {
-      background: linear-gradient(90deg, rgba(110, 188, 137, 0.45), var(--stat-s));
+      background: var(--stat-s);
     }
 
     .scale-ticks {
       display: grid;
-      grid-template-columns: 74px 38px 1fr;
+      grid-template-columns: 112px 44px 1fr;
       gap: 0.6rem;
-      margin-top: 0.25rem;
+      margin-top: 0.3rem;
     }
 
     .scale-ticks-labels {
       grid-column: 3;
       display: flex;
       justify-content: space-between;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
       font-variant-numeric: tabular-nums;
     }
 
@@ -534,36 +654,38 @@
     }
 
     .levelup-pill {
-      background: var(--bg-surface);
+      background: var(--bg-elevated);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 0.4rem 0.6rem;
+      border-radius: 0;
+      padding: 0.45rem 0.6rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
     .levelup-attr {
-      font-size: 0.84rem;
-      color: var(--text-secondary);
+      font-size: 0.72rem;
+      color: var(--accent);
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
       display: inline-flex;
       align-items: center;
-      gap: 0.3rem;
+      gap: 0.35rem;
     }
 
     .levelup-val {
-      font-family: var(--font-display);
-      font-size: 1.02rem;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
       font-weight: 700;
-      color: var(--gold);
+      color: var(--text-primary);
       font-variant-numeric: tabular-nums;
     }
 
     /* Proportional 30-pt split bar */
     .levelup-split-bar {
       height: 7px;
-      border-radius: 4px;
+      border-radius: 0;
       overflow: hidden;
       display: flex;
       gap: 2px;
@@ -574,47 +696,44 @@
     .split-seg-m { background: var(--stat-m); height: 100%; transition: width 0.25s ease; }
     .split-seg-s { background: var(--stat-s); height: 100%; transition: width 0.25s ease; }
 
-    /* 3.6 Carry weight */
-    .carry-row {
-      display: grid;
-      grid-template-columns: 74px 38px 1fr;
-      align-items: center;
-      gap: 0.6rem;
-    }
-
+    /* 3.6 Carry weight (White bar) */
     .carry-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--race-accent-border), var(--race-accent));
-      border-radius: 2px;
+      background: #ffffff;
+      border-radius: 0;
       transition: width 0.25s ease;
     }
 
-    /* 3.7 Base regeneration rates */
+    /* 3.7 Base regeneration rates (Each takes its own attribute colour) */
     .regen-bars-group {
       display: grid;
       gap: 0.45rem;
-    }
-
-    .regen-row {
-      display: grid;
-      grid-template-columns: 74px 38px 1fr;
-      align-items: center;
-      gap: 0.6rem;
     }
 
     .regen-track {
       height: 8px;
       background: var(--bg-track);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
+      border-radius: 0;
       overflow: hidden;
     }
 
     .regen-fill {
       height: 100%;
-      background: var(--race-accent);
-      border-radius: 2px;
+      border-radius: 0;
       transition: width 0.25s ease;
+    }
+
+    #detail-regen-bars .regen-row:nth-child(1) .regen-fill {
+      background: var(--stat-h);
+    }
+
+    #detail-regen-bars .regen-row:nth-child(2) .regen-fill {
+      background: var(--stat-m);
+    }
+
+    #detail-regen-bars .regen-row:nth-child(3) .regen-fill {
+      background: var(--stat-s);
     }
 
     /* 3.8 Major and Minor Skills */
@@ -625,13 +744,13 @@
     }
 
     .skill-group-label {
-      font-family: var(--font-display);
-      font-size: 0.84rem;
-      font-weight: 700;
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 600;
       text-transform: uppercase;
-      color: var(--teal);
-      margin: 0 0 0.45rem;
-      letter-spacing: 0.04em;
+      letter-spacing: 2.4px;
+      color: var(--accent);
+      margin: 0 0 0.5rem;
     }
 
     .tag-list {
@@ -640,63 +759,66 @@
       padding: 0;
       display: flex;
       flex-wrap: wrap;
-      gap: 0.38rem;
+      gap: 0.4rem;
     }
 
     .skill-tag {
       display: inline-flex;
       align-items: center;
-      padding: 0.22rem 0.6rem;
-      border-radius: var(--radius-sm);
-      font-size: 0.83rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 0;
+      font-size: 0.8rem;
       font-weight: 600;
     }
 
     .skill-tag-major {
-      background: var(--race-accent-soft);
-      border: 1px solid var(--race-accent-border);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
       color: var(--text-primary);
     }
 
     .skill-tag-minor {
-      background: var(--bg-surface);
+      background: var(--bg-canvas);
       border: 1px solid var(--border-subtle);
       color: var(--text-secondary);
     }
 
     /* 4. Compare All Races Visual Matrix */
     .compare-section {
-      margin-bottom: 1.35rem;
+      margin-bottom: 1.75rem;
     }
 
     .section-bar {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 0.65rem;
+      gap: 0.5rem 1rem;
+      margin-bottom: 0.85rem;
     }
 
+    /* 5. Section titles use the section title size */
     .section-title {
-      font-family: var(--font-display);
-      font-size: 1.1rem;
+      font-family: var(--font-sans);
+      font-size: clamp(1.7rem, 2.6vw, 2.2rem) !important;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 3px;
       text-transform: uppercase;
-      color: var(--gold);
+      color: var(--text-primary);
       margin: 0;
+      line-height: 1.2;
     }
 
     .section-hint {
-      font-size: 0.82rem;
+      font-size: 0.85rem;
       color: var(--text-secondary);
+      max-width: 58ch;
     }
 
     .table-wrapper {
-      background: var(--bg-surface);
+      background: var(--bg-panel);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
+      border-radius: 0;
       overflow-x: auto;
     }
 
@@ -710,19 +832,19 @@
 
     .compare-table th,
     .compare-table td {
-      padding: 0.55rem 0.7rem;
+      padding: 0.6rem 0.75rem;
       border-bottom: 1px solid var(--border-subtle);
       vertical-align: middle;
     }
 
     .compare-table thead th {
       background: var(--bg-elevated);
-      font-family: var(--font-display);
-      font-size: 0.76rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 2.4px;
       text-transform: uppercase;
-      color: var(--gold);
+      color: var(--accent);
       border-bottom: 1px solid var(--border-strong);
       white-space: nowrap;
       padding: 0;
@@ -738,23 +860,25 @@
       text-transform: inherit;
       cursor: pointer;
       width: 100%;
-      padding: 0.65rem 0.7rem;
+      padding: 0.7rem 0.75rem;
       display: inline-flex;
       align-items: center;
       justify-content: space-between;
-      gap: 0.3rem;
+      gap: 0.35rem;
       text-align: left;
     }
 
-    .sort-btn:hover {
-      background: var(--bg-elevated-hover);
+    .sort-btn:hover,
+    .compare-table thead th[aria-sort="ascending"] .sort-btn,
+    .compare-table thead th[aria-sort="descending"] .sort-btn {
+      background: var(--bg-panel);
       color: var(--text-primary);
     }
 
     .sort-indicator {
       display: inline-block;
       font-size: 0.7rem;
-      color: var(--teal);
+      color: var(--accent);
       min-width: 0.7rem;
       text-align: center;
     }
@@ -768,7 +892,11 @@
     }
 
     .compare-table tbody tr.is-active-race {
-      background: rgba(217, 184, 102, 0.09);
+      background: var(--bg-elevated);
+    }
+
+    .compare-table tbody tr.is-active-race td:first-child {
+      border-left: 3px solid var(--accent);
     }
 
     .compare-table tbody tr:last-child td {
@@ -779,36 +907,40 @@
       appearance: none;
       background: none;
       border: none;
-      padding: 0.1rem 0;
-      font-family: var(--font-display);
-      font-size: 0.9rem;
+      padding: 0.15rem 0;
+      font-family: var(--font-sans);
+      font-size: 0.82rem;
       font-weight: 700;
-      color: var(--teal);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-primary);
       cursor: pointer;
       text-align: left;
       text-decoration: underline;
-      text-decoration-color: rgba(127, 200, 200, 0.35);
-      text-underline-offset: 3px;
+      text-decoration-color: var(--border-strong);
+      text-underline-offset: 4px;
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.45rem;
     }
 
     .race-link-btn:hover {
-      color: var(--gold);
-      text-decoration-color: var(--gold);
+      color: var(--accent);
+      text-decoration-color: var(--accent);
     }
 
     .race-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+      width: 7px;
+      height: 7px;
+      border-radius: 0;
       display: inline-block;
       flex-shrink: 0;
+      background: var(--accent) !important;
     }
 
     /* Inline mini-bars inside comparison table cells */
     .matrix-stat-cell {
+      font-family: var(--font-mono);
       font-variant-numeric: tabular-nums;
       min-width: 68px;
     }
@@ -816,58 +948,115 @@
     .matrix-val {
       display: block;
       font-weight: 600;
+      color: var(--text-primary);
       line-height: 1.15;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
     }
 
     .matrix-mini-track {
       height: 4px;
       background: var(--bg-track);
-      border-radius: 2px;
+      border-radius: 0;
       overflow: hidden;
       width: 52px;
     }
 
     .matrix-mini-fill {
       height: 100%;
-      border-radius: 2px;
+      border-radius: 0;
+    }
+
+    /* Carry weight bar in table is white */
+    .compare-table td:nth-child(7) .matrix-mini-fill {
+      background: #ffffff !important;
     }
 
     .total-badge {
       display: inline-block;
+      font-family: var(--font-mono);
       font-variant-numeric: tabular-nums;
       font-weight: 700;
-      color: var(--gold);
-      background: var(--gold-subtle);
-      border: 1px solid var(--gold-dim);
-      padding: 0.1rem 0.45rem;
-      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      padding: 0.12rem 0.5rem;
+      border-radius: 0;
     }
 
-    /* 5. In-game settings */
+    /* 5. In-game settings (Callout look) */
     .settings-section {
-      background: var(--bg-surface);
+      background: var(--bg-panel);
       border: 1px solid var(--border-subtle);
-      border-left: 3px solid var(--teal);
-      border-radius: var(--radius-md);
-      padding: 0.95rem 1.15rem;
-      margin-bottom: 1.25rem;
+      border-left: 3px solid var(--accent);
+      border-radius: 0;
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1.75rem;
     }
 
     .settings-section p {
-      margin: 0.35rem 0 0;
-      color: var(--text-primary);
-      font-size: 0.92rem;
-      line-height: 1.58;
+      margin: 0.55rem 0 0;
+      color: var(--text-secondary);
+      font-size: 0.94rem;
+      line-height: 1.62;
     }
 
-    /* 6. Footer */
+    /* Closing Strip */
+    .closing-strip {
+      background-color: var(--bg-panel);
+      background-image: repeating-linear-gradient(
+        115deg,
+        transparent 0 44px,
+        rgba(255, 255, 255, 0.018) 44px 45px
+      );
+      border: 1px solid var(--border-subtle);
+      border-radius: 0;
+      padding: 2.25rem 1.5rem;
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    .closing-title {
+      font-family: var(--font-sans);
+      font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--text-primary);
+      margin: 0 0 1.25rem;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      background: var(--accent);
+      color: #0d0d0d;
+      font-family: var(--font-sans);
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
+      padding: 15px 32px;
+      border: 1px solid var(--accent);
+      border-radius: 0;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: #98ce7f;
+      border-color: #98ce7f;
+    }
+
+    /* 6. Footer (Site footer style) */
     .poster-footer {
       text-align: center;
-      padding-top: 0.9rem;
+      padding-top: 1.25rem;
       border-top: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      font-size: 0.86rem;
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
     }
 
     .poster-footer p {
@@ -892,6 +1081,10 @@
       .race-tablist {
         grid-template-columns: repeat(2, 1fr);
       }
+
+      .stat-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     @media (max-width: 600px) {
@@ -900,11 +1093,11 @@
       }
 
       .infographic-poster {
-        padding: 1.1rem 0.85rem 1.25rem;
+        padding: 1.15rem 0.85rem 1.35rem;
       }
 
       .detail-panel {
-        padding: 0.95rem 0.85rem;
+        padding: 1rem 0.85rem;
       }
 
       .levelup-grid,
@@ -937,7 +1130,7 @@
     </svg>
 
     <!-- 1. Header -->
-    <header class="poster-header">
+    <header class="poster-header" data-reveal>
       <div class="preview-pill" role="note">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10"></circle>
@@ -946,13 +1139,36 @@
         </svg>
         <span>Preview of the upcoming revision; numbers may change</span>
       </div>
-      <h1 class="poster-title">Aetherial Bloodlines</h1>
+      <p class="eyebrow">Apodeictic presents</p>
+      <h1 class="poster-title">
+        <span class="title-hollow">Aetherial</span>
+        <span class="title-solid">Bloodlines</span>
+      </h1>
       <p class="poster-tagline">Every race trades a strength for a weakness, and every weakness can be overcome</p>
     </header>
 
+    <section class="stat-strip" aria-label="Key figures" data-reveal>
+      <div class="stat-item">
+        <span class="stat-number">10</span>
+        <span class="stat-caption">Playable races</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">30</span>
+        <span class="stat-caption">Level-up points</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">F7</span>
+        <span class="stat-caption">FLICK menu</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">PoE</span>
+        <span class="stat-caption">Required for perks</span>
+      </div>
+    </section>
+
     <main>
       <!-- 2. Interactive Race Picker -->
-      <section class="picker-section" aria-label="Select a race">
+      <section class="picker-section" aria-label="Select a race" data-reveal>
         <div class="race-tablist" role="tablist" aria-label="Playable races" id="race-tablist"></div>
       </section>
 
@@ -963,6 +1179,7 @@
         role="tabpanel"
         aria-live="polite"
         tabindex="-1"
+        data-reveal
       >
         <!-- 3.1 Name and kit title -->
         <div class="detail-header block-1-identity">
@@ -1047,7 +1264,7 @@
       </section>
 
       <!-- 4. Compare all races -->
-      <section class="compare-section" aria-labelledby="compare-heading">
+      <section class="compare-section" aria-labelledby="compare-heading" data-reveal>
         <div class="section-bar">
           <h2 id="compare-heading" class="section-title">Compare all races</h2>
           <span class="section-hint">Click a column header to sort, or click a race name to inspect</span>
@@ -1112,14 +1329,19 @@
       </section>
 
       <!-- 5. In-game settings -->
-      <section class="settings-section" aria-labelledby="settings-heading">
+      <section class="settings-section" aria-labelledby="settings-heading" data-reveal>
         <h2 id="settings-heading" class="section-title" style="font-size: 0.98rem;">In-game settings</h2>
         <p>Everything is adjustable in game from the FLICK menu (F7), under Aetherial Bloodlines. Racial drawbacks can be switched off entirely; the racial abilities are part of the bargain those drawbacks pay for, so they switch off with them. Drawback mastery can be switched off for permanent drawbacks. The Bosmer's Green Pact can block harvesting, allow it with a penalty, or be turned off. The level-up gains for every race can be changed on their own page, and modded races can be added in the INI.</p>
       </section>
     </main>
 
+    <section class="closing-strip" aria-labelledby="closing-heading" data-reveal>
+      <h2 id="closing-heading" class="closing-title">Source code</h2>
+      <a href="https://github.com/Akryllic/Aetherial-Bloodlines" class="btn-primary">View on GitHub</a>
+    </section>
+
     <!-- 6. Footer -->
-    <footer class="poster-footer">
+    <footer class="poster-footer" data-reveal>
       <p>Aetherial Bloodlines by Apodeictic. Requires Paths of Empyrean for the perks named above.</p>
     </footer>
   </div>
@@ -1168,9 +1390,9 @@
           ],
           overcoming: [
             "Damage taken above 85% Health: shaken off at 3 Mettle stacks; overcome with Bulwark or Battle Rush.",
-            "Regeneration pause: lifted at 3 Mettle stacks; overcome with Conditioning or Light Matching Set (rank 2).",
+            "Regeneration pause: lifted in combat at 3 Mettle stacks; overcome with Conditioning or Light Matching Set (rank 2).",
             "Magic Resistance penalty: overcome with Reflective Carapace, Elusive Zephyr or Dovahziil.",
-            "A power attack at 5 Mettle stacks makes nearby enemies falter (-15% attack damage for 4 seconds)."
+            "<strong>Onryo Dread:</strong> a power attack that lands while you already hold 5 Mettle stacks makes every enemy within 15 feet falter (-15% attack damage for 4 seconds)."
           ],
           base: { h: 120, m: 80, s: 120, total: 320 },
           levelup: { h: 15, m: 5, s: 10 },
